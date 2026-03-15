@@ -69,7 +69,9 @@
         .btn-start {
             background: white; color: black; border: none;
             width: 80%; max-width: 250px;
-            padding: 18px 0; font-size: 1rem; letter-spacing: 3px;
+            padding: 18px 0; font-size: 1rem; 
+            /* ปรับระยะห่างตัวอักษรเป็นปกติ */
+            letter-spacing: normal; 
             border-radius: 100px; cursor: pointer; font-weight: 600;
             text-transform: uppercase;
             box-shadow: 0 10px 30px rgba(255,255,255,0.1);
@@ -96,6 +98,7 @@
             justify-content: center;
             align-items: center;
             z-index: 1500;
+            cursor: pointer;
         }
 
         /* เครื่องเล่นวิดีโอ */
@@ -171,8 +174,10 @@
 
     <!-- หน้าจอตอนวิดีโอกำลังโหลด -->
     <div id="video-loading">
-        <div class="loader-ring"></div>
-        <p style="letter-spacing: 2px; font-weight: 300;">กำลังเปิดความทรงจำ...</p>
+        <div id="loading-content" style="text-align:center;">
+            <div class="loader-ring"></div>
+            <p id="loading-text" style="letter-spacing: 2px; font-weight: 300;">กำลังเปิดความทรงจำ...</p>
+        </div>
     </div>
 
     <!-- แถบแนะนำการหมุนจอ -->
@@ -197,6 +202,8 @@
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
         const videoLoading = document.getElementById('video-loading');
+        const loadingContent = document.getElementById('loading-content');
+        const loadingText = document.getElementById('loading-text');
         const landscapeHint = document.getElementById('landscape-hint');
 
         let model;
@@ -237,7 +244,6 @@
                     audio: false 
                 });
                 webcam.srcObject = cameraStream;
-                // เตรียมวิดีโอ (Prime the video for auto-play)
                 videoPlayer.load();
                 requestAnimationFrame(predictLoop);
             } catch (err) { alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message); }
@@ -272,13 +278,24 @@
             }
             cameraContainer.style.display = 'none';
             
-            // 2. แสดงหน้าจอโหลดระหว่างรอวิดีโอพร้อม
+            // 2. แสดงหน้าจอโหลด
             videoLoading.style.display = 'flex';
             
-            // 3. สั่งเล่นวิดีโอ (Muted play first to bypass mobile policies if needed)
+            // 3. ตั้งค่าการจัดการคลิกบนหน้าจอโหลด (ในกรณีที่ autoplay ไม่ทำงาน)
+            videoLoading.onclick = () => {
+                loadingText.innerText = "กำลังเล่นวิดีโอ...";
+                videoPlayer.play().then(() => {
+                    videoLoading.style.display = 'none';
+                    videoPlayer.style.display = 'block';
+                }).catch(e => {
+                    console.error("Play failed on click:", e);
+                });
+            };
+
+            // 4. สั่งเล่นวิดีโอ
             const playPromise = videoPlayer.play();
 
-            // 4. ใช้ event 'playing' เพื่อระบุว่าวิดีโอเริ่มเล่นจริง (มีภาพออกมาแล้ว)
+            // 5. เมื่อวิดีโอเริ่มเล่นจริง
             videoPlayer.onplaying = () => {
                 videoLoading.style.display = 'none';
                 videoPlayer.style.display = 'block';
@@ -288,15 +305,17 @@
 
             if (playPromise !== undefined) {
                 playPromise.catch(error => {
-                    console.error("Auto-play failed:", error);
-                    // หากยังเล่นไม่ได้ ให้รอ Event อื่น หรือแสดงปุ่มกดเล่น
-                    videoLoading.innerHTML = '<p>แตะหน้าจอเพื่อเริ่มวิดีโอ</p>';
-                    videoLoading.onclick = () => {
-                        videoPlayer.play();
-                    };
+                    console.log("Autoplay prevented, waiting for user click.");
+                    loadingContent.innerHTML = `
+                        <div style="padding: 20px; border: 1px solid white; border-radius: 15px; background: rgba(255,255,255,0.1);">
+                            <p style="font-size: 1.2rem; margin-bottom: 10px;">✨ พบความทรงจำแล้ว</p>
+                            <p style="font-weight: 300;">แตะที่นี่เพื่อเริ่มเล่นวิดีโอ</p>
+                        </div>
+                    `;
                 });
             }
 
+            // แตะวิดีโอขณะเล่นเพื่อสแกนใหม่
             videoPlayer.onclick = () => location.reload();
         }
 
