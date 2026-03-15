@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Lens - AR Keychain</title>
+    <title>Memory Lens - NFT Edition</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
     
-    <!-- A-Frame & AR.js -->
+    <!-- A-Frame & AR.js for NFT -->
+    <!-- หมายเหตุ: ใช้เวอร์ชันที่รองรับ NFT โดยเฉพาะ -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     
     <style>
         :root {
-            --accent-color: #ffffff;
-            --bg-gradient: linear-gradient(180deg, #1a1a1a 0%, #000000 100%);
-            --glass-bg: rgba(255, 255, 255, 0.1);
+            --bg-gradient: linear-gradient(180deg, #0f172a 0%, #000000 100%);
         }
 
         body { 
@@ -27,7 +26,7 @@
             color: #fff;
         }
         
-        /* สไตล์หน้าจอเริ่มต้นแบบ Minimalist */
+        /* หน้าจอเริ่มต้น (Landing Page) */
         #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -38,79 +37,73 @@
             align-items: center;
             z-index: 9999;
             transition: opacity 0.8s ease;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .container {
-            max-width: 300px;
+            max-width: 320px;
             text-align: center;
         }
 
         h1 {
             font-weight: 300;
             letter-spacing: 4px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             text-transform: uppercase;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
         }
 
-        p {
+        .instruction {
             font-weight: 300;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             opacity: 0.7;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             line-height: 1.6;
         }
 
-        .marker-box {
-            width: 120px;
-            height: 120px;
-            background: white;
+        .image-preview {
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
             padding: 10px;
-            border-radius: 20px;
+            border-radius: 50%;
             margin: 0 auto 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .marker-box img { width: 100%; border-radius: 5px; }
+        .image-preview img { 
+            width: 90%; 
+            height: 90%; 
+            object-fit: contain;
+            border-radius: 50%;
+        }
 
         .btn-start {
-            background: transparent;
-            color: white;
-            border: 1px solid rgba(255,255,255,0.4);
-            padding: 15px 40px;
+            background: white;
+            color: black;
+            border: none;
+            padding: 16px 50px;
             font-size: 0.9rem;
             letter-spacing: 2px;
             border-radius: 100px;
             cursor: pointer;
             transition: all 0.3s ease;
             text-transform: uppercase;
+            font-weight: 600;
         }
 
-        .btn-start:hover {
-            background: white;
-            color: black;
-            border-color: white;
-        }
-
-        /* Scanning UI */
+        /* UI ขณะกำลังสแกน */
         #ui-layer {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
             z-index: 100;
             display: none;
-        }
-
-        .scan-reticle {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 250px; height: 250px;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 40px;
         }
 
         .scan-msg {
@@ -120,48 +113,59 @@
             text-align: center;
             font-size: 0.8rem;
             letter-spacing: 1px;
-            text-transform: uppercase;
             opacity: 0.8;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* เอฟเฟกต์จุดโหลด */
-        .dots { display: inline-block; width: 20px; text-align: left; }
+        /* Loader ขณะโหลดข้อมูลรูปภาพ (Descriptor) */
+        .arjs-loader {
+            height: 100%; width: 100%;
+            position: absolute; top: 0; left: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9998;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
 
         a-scene { display: none; }
     </style>
 </head>
 <body>
 
-    <!-- หน้าจอเปิดเครื่อง -->
     <div id="overlay">
         <div class="container">
             <h1>Memory Lens</h1>
-            <p>ส่องไปที่พวงกุญแจ<br>เพื่อย้อนคืนความทรงจำ</p>
+            <p class="instruction">ส่องไปที่รูปน้องแมวบนพวงกุญแจ<br>เพื่อเปิดดูวิดีโอพิเศษของคุณ</p>
             
-            <div class="marker-box">
-                <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" alt="Marker Preview">
+            <div class="image-preview">
+                <img src="pepsiontime.png" alt="Scanning Target">
             </div>
 
-            <button class="btn-start" id="btnStart">เริ่มการทำงาน</button>
+            <button class="btn-start" id="btnStart">เข้าสู่ระบบสแกน</button>
         </div>
     </div>
 
-    <!-- UI ขณะกำลังสแกน -->
+    <!-- ข้อความแจ้งเตือนขณะสแกน -->
     <div id="ui-layer">
-        <div class="scan-reticle"></div>
-        <div class="scan-msg" id="scanMsg">กำลังรอสแกน<span class="dots" id="dots">...</span></div>
+        <div class="scan-msg" id="scanMsg">🔍 กำลังค้นหารูปน้องแมว...</div>
     </div>
 
-    <!-- AR Scene -->
+    <!-- Loader -->
+    <div class="arjs-loader" id="loader" style="display: none;">
+        <div>กำลังประมวลผลรูปภาพ...</div>
+    </div>
+
     <a-scene 
-        embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
-        renderer="antialias: true; alpha: true; precision: medium;"
-        vr-mode-ui="enabled: false">
+        vr-mode-ui="enabled: false;"
+        renderer="logarithmicDepthBuffer: true;"
+        embedded
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
         
         <a-assets>
             <video id="v" 
-                   src="https://vjs.zencdn.net/v/oceans.mp4" 
+                   src="D_Logo_Reveal_for_Performing_Arts.mp4" 
                    preload="auto" 
                    loop="true" 
                    crossorigin="anonymous" 
@@ -171,16 +175,30 @@
             </video>
         </a-assets>
 
-        <a-marker preset="hiro" id="marker">
-            <!-- วิดีโอดีไซน์แบบไร้ขอบ (Borderless) -->
+        <!-- 
+            สแกนรูปภาพจริง (NFT) 
+            url: ชี้ไปยังโฟลเดอร์ descriptors และชื่อไฟล์ (ห้ามใส่นามสกุลไฟล์)
+        -->
+        <a-nft
+            type="nft"
+            url="./descriptors/pepsi-marker"
+            smooth="true"
+            smoothCount="10"
+            smoothTolerance=".01"
+            smoothThreshold="5">
+            
+            <!-- 
+                ขนาดวิดีโอในโหมด NFT จะใช้หน่วยสัมพันธ์กับความละเอียดรูปภาพ 
+                อาจต้องปรับ scale หรือ width/height ตามความเหมาะสม
+            -->
             <a-video 
                 src="#v" 
-                width="1.6" 
-                height="0.9" 
-                position="0 0.01 0" 
+                width="160" 
+                height="90" 
+                position="80 0 -80" 
                 rotation="-90 0 0">
             </a-video>
-        </a-marker>
+        </a-nft>
 
         <a-entity camera></a-entity>
     </a-scene>
@@ -191,52 +209,48 @@
         const scene = document.querySelector('a-scene');
         const uiLayer = document.getElementById('ui-layer');
         const video = document.getElementById('v');
-        const marker = document.getElementById('marker');
         const scanMsg = document.getElementById('scanMsg');
-        const dots = document.getElementById('dots');
-
-        // อนิเมชั่นจุดไข่ปลา
-        let dotCount = 0;
-        setInterval(() => {
-            dotCount = (dotCount + 1) % 4;
-            dots.innerText = ".".repeat(dotCount);
-        }, 500);
+        const loader = document.getElementById('loader');
 
         btn.addEventListener('click', async () => {
-            // ค่อยๆ จางหน้าจอ Overlay
             overlay.style.opacity = '0';
             setTimeout(() => {
                 overlay.style.display = 'none';
                 scene.style.display = 'block';
                 uiLayer.style.display = 'block';
+                loader.style.display = 'flex'; // แสดง loader ขณะระบบกำลังเริ่ม
             }, 800);
 
-            // ปลดล็อกวิดีโอ (จำเป็นสำหรับเบราว์เซอร์ส่วนใหญ่)
             try {
                 video.load();
                 await video.play();
                 video.pause();
             } catch (e) {
-                console.log("Waiting for user interaction to play video.");
+                console.log("Video unlock success");
             }
         });
 
-        marker.addEventListener('markerFound', () => {
-            scanMsg.innerText = "กำลังเล่นวิดีโอ";
-            video.muted = false;
-            video.play().catch(e => console.error("Play failed:", e));
+        // เมื่อระบบโหลดข้อมูล Descriptor เสร็จสิ้น
+        window.addEventListener('arjs-nft-loaded', () => {
+            loader.style.display = 'none';
+            console.log("NFT Data Loaded Successfully");
         });
 
-        marker.addEventListener('markerLost', () => {
-            scanMsg.innerHTML = 'กำลังรอสแกน<span class="dots" id="dots">...</span>';
+        const nftMarker = document.querySelector('a-nft');
+
+        nftMarker.addEventListener('markerFound', () => {
+            scanMsg.innerText = "🎬 กำลังแสดงความทรงจำ...";
+            video.muted = false;
+            video.play().catch(e => console.error(e));
+        });
+
+        nftMarker.addEventListener('markerLost', () => {
+            scanMsg.innerText = "🔍 ส่องไปที่รูปน้องแมว...";
             video.pause();
         });
 
-        // จัดการ Error แบบเงียบๆ ไม่ให้รบกวนหน้าจอ
-        window.addEventListener('unhandledrejection', (event) => {
-            event.preventDefault();
-            console.warn('Silent catch:', event.reason);
-        });
+        // ดักจับ error ป้องกันหน้าเว็บขาว
+        window.addEventListener('unhandledrejection', (e) => e.preventDefault());
     </script>
 </body>
 </html>
