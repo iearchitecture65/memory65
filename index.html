@@ -87,17 +87,26 @@
 
         #webcam { width: 100%; height: 100%; object-fit: cover; }
 
-        /* หน้าจอโหลดวิดีโอเมื่อสแกนติด */
-        #video-loading {
+        /* หน้าจอ "แตะเพื่อเล่น" (Overlay หลังจากสแกนติด) */
+        #play-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
+            background: rgba(0, 0, 0, 0.7);
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 1500;
+            z-index: 2500;
             cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        .play-icon-large {
+            width: 80px;
+            height: 80px;
+            fill: #fff;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
         }
 
         /* เครื่องเล่นวิดีโอ */
@@ -142,7 +151,7 @@
             margin: 0 auto 15px;
         }
 
-        /* ปุ่มแนะนำเต็มจอที่แสดงด้านบน */
+        /* แถบแนะนำดูแบบเต็มจอ (Chip ด้านบน) */
         #fullscreen-hint {
             position: fixed;
             top: 20px; left: 50%;
@@ -206,20 +215,17 @@
     <!-- แถบแนะนำการดูแบบเต็มจอ -->
     <div id="fullscreen-hint">
         <svg class="svg-icon" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-        กดเพื่อดูแบบเต็มจอ
+        ดูแบบเต็มจอ
     </div>
     
     <button id="reload-btn" onclick="location.reload()">
         <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     </button>
 
-    <!-- หน้าจอตอนวิดีโอกำลังโหลด -->
-    <div id="video-loading">
-        <div id="loading-content" style="text-align:center;">
-            <div class="loader-ring"></div>
-            <p id="loading-text" style="font-weight: 300;">กำลังเปิดความทรงจำ...</p>
-            <p id="manual-play-text" style="font-size: 0.8rem; margin-top: 10px; opacity: 0.7; display: none;">หากรอนานเกินไป โปรดแตะหน้าจอเพื่อเล่น</p>
-        </div>
+    <!-- หน้าจอแตะเพื่อเล่น (หลังจากสแกนติด) -->
+    <div id="play-overlay">
+        <svg class="play-icon-large" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <p style="font-weight: 400; font-size: 1.1rem;">พบความทรงจำแล้ว แตะเพื่อเริ่มเล่น</p>
     </div>
 
     <div id="camera-container">
@@ -242,10 +248,9 @@
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
-        const videoLoading = document.getElementById('video-loading');
+        const playOverlay = document.getElementById('play-overlay');
         const fullscreenHint = document.getElementById('fullscreen-hint');
         const reloadBtn = document.getElementById('reload-btn');
-        const manualPlayText = document.getElementById('manual-play-text');
 
         let model;
         let targetFeatures;
@@ -313,72 +318,46 @@
         function handleDetectionSuccess() {
             isDetected = true;
             
+            // 1. ปิดกล้องทันที
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
             }
             cameraContainer.style.display = 'none';
-            videoLoading.style.display = 'flex';
             
-            // แสดงปุ่มแจ้งเตือนให้แตะหากโหลดนาน
-            setTimeout(() => {
-                if (videoLoading.style.display !== 'none') {
-                    manualPlayText.style.display = 'block';
-                }
-            }, 2000);
+            // 2. แสดงวิดีโอ (แต่ยังไม่เล่น) และ Overlay ดำจางๆ
+            videoPlayer.style.display = 'block';
+            playOverlay.style.display = 'flex';
+            reloadBtn.style.display = 'block';
 
-            // พยายามเริ่มวิดีโอทันที
-            startVideoPlayback();
-
-            // ตรวจสอบสถานะวิดีโอแบบต่อเนื่อง (Fallback)
-            const checkPlayInterval = setInterval(() => {
-                if (videoPlayer.currentTime > 0 && !videoPlayer.paused && !videoPlayer.ended && videoPlayer.readyState > 2) {
-                    onVideoActuallyPlaying();
-                    clearInterval(checkPlayInterval);
-                }
-            }, 250);
-
-            videoLoading.onclick = () => {
-                startVideoPlayback();
+            // 3. เมื่อกดที่ Overlay ให้เริ่มเล่น
+            playOverlay.onclick = () => {
+                playOverlay.style.display = 'none';
+                videoPlayer.play();
+                
+                // แสดงคำแนะนำเต็มจอชั่วคราว
+                fullscreenHint.style.display = 'flex';
+                setTimeout(() => {
+                    fullscreenHint.style.opacity = '0';
+                    setTimeout(() => { fullscreenHint.style.display = 'none'; }, 500);
+                }, 5000);
             };
         }
 
-        function startVideoPlayback() {
-            const playPromise = videoPlayer.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    // Success
-                }).catch(error => {
-                    console.log("Autoplay blocked");
-                });
-            }
-        }
-
-        function onVideoActuallyPlaying() {
-            videoLoading.style.display = 'none';
-            videoPlayer.style.display = 'block';
-            fullscreenHint.style.display = 'flex';
-            reloadBtn.style.display = 'block';
-
-            // ซ่อนปุ่มแนะนำเต็มจอหลังจาก 5 วินาที
-            setTimeout(() => {
-                fullscreenHint.style.opacity = '0';
-                setTimeout(() => { fullscreenHint.style.display = 'none'; }, 500);
-            }, 5000);
-        }
-
-        // เมื่อกดที่แถบแนะนำเต็มจอ
+        // ฟังก์ชันเข้าโหมดเต็มจอแบบจริง (Native Fullscreen)
         fullscreenHint.onclick = () => {
             enterFullscreen();
             fullscreenHint.style.display = 'none';
         };
 
         function enterFullscreen() {
-            if (videoPlayer.requestFullscreen) {
-                videoPlayer.requestFullscreen();
-            } else if (videoPlayer.webkitRequestFullscreen) {
-                videoPlayer.webkitRequestFullscreen();
-            } else if (videoPlayer.msRequestFullscreen) {
-                videoPlayer.msRequestFullscreen();
+            // ขอ Fullscreen ที่ตัววิดีโอโดยตรงเพื่อให้เต็มจอที่สุด
+            const elem = videoPlayer;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen(); // สำหรับ Safari/iOS
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
             }
         }
 
@@ -386,6 +365,7 @@
         document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
         function handleFullscreenChange() {
+            // หากเข้าสู่โหมดเต็มจอ และวิดีโอเป็นแนวนอน ให้พยายามหมุนจอ
             if (document.fullscreenElement || document.webkitFullscreenElement) {
                 if (screen.orientation && screen.orientation.lock && videoPlayer.videoWidth > videoPlayer.videoHeight) {
                     screen.orientation.lock('landscape').catch(() => {});
