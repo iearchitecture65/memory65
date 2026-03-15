@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Lens - AI Recognition</title>
+    <title>Memory Lens - Mobile Scanner</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
     <style>
         :root {
             --accent-color: #ffffff;
-            --bg-gradient: linear-gradient(180deg, #1a1a2e 0%, #000000 100%);
+            --bg-gradient: linear-gradient(180deg, #121212 0%, #000000 100%);
         }
 
         body { 
@@ -24,6 +24,7 @@
             font-family: 'Sarabun', sans-serif; 
             background: #000;
             color: #fff;
+            -webkit-tap-highlight-color: transparent;
         }
         
         /* หน้าจอเริ่มต้น */
@@ -36,33 +37,64 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            transition: opacity 0.8s ease;
+            transition: opacity 0.5s ease;
             text-align: center;
             padding: 20px;
+            box-sizing: border-box;
         }
 
-        .container { max-width: 320px; }
-        h1 { font-weight: 300; letter-spacing: 4px; text-transform: uppercase; font-size: 1.5rem; margin-bottom: 10px; }
-        p { font-weight: 300; font-size: 0.9rem; opacity: 0.7; margin-bottom: 30px; }
+        .container { width: 100%; max-width: 400px; }
+        h1 { font-weight: 300; letter-spacing: 6px; text-transform: uppercase; font-size: 1.8rem; margin-bottom: 5px; }
+        p { font-weight: 300; font-size: 1rem; opacity: 0.6; margin-bottom: 40px; }
 
         .image-preview {
-            width: 150px; height: 150px;
+            width: 220px; height: 220px;
             background: rgba(255,255,255,0.05);
             border-radius: 50%;
-            margin: 0 auto 30px;
+            margin: 0 auto 40px;
             padding: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: relative;
+            box-shadow: 0 0 30px rgba(255,255,255,0.05);
         }
-        .image-preview img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+        /* รูปต้นฉบับ (Original Style) */
+        .image-preview img { 
+            width: 100%; height: 100%; 
+            object-fit: contain; 
+            border-radius: 50%;
+            /* นำ filter grayscale ออกเพื่อให้เห็นสีจริง */
+            transition: transform 0.3s ease;
+        }
 
         .btn-start {
             background: white; color: black; border: none;
-            padding: 15px 40px; font-size: 0.9rem; letter-spacing: 2px;
+            width: 80%;
+            max-width: 250px;
+            padding: 18px 0; font-size: 1rem; letter-spacing: 3px;
             border-radius: 100px; cursor: pointer; font-weight: 600;
             text-transform: uppercase;
+            box-shadow: 0 10px 30px rgba(255,255,255,0.1);
+            transition: transform 0.2s, background 0.2s;
         }
-        .btn-start:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .btn-start:active { transform: scale(0.95); }
+        .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+
+        /* ระบบนับถอยหลัง */
+        #countdown {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 8rem;
+            font-weight: 600;
+            z-index: 2000;
+            letter-spacing: -5px;
+        }
 
         /* ส่วนแสดงผลกล้องและวิดีโอ */
         #camera-container {
@@ -73,43 +105,44 @@
 
         #webcam {
             width: 100%; height: 100%; object-fit: cover;
-            transform: scaleX(-1);
         }
 
         #video-player {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 90%; max-width: 500px;
-            border-radius: 15px;
+            width: 90vw;
+            max-width: 600px;
+            border-radius: 20px;
             display: none;
-            box-shadow: 0 0 50px rgba(255,255,255,0.2);
+            box-shadow: 0 0 100px rgba(255,255,255,0.3);
             z-index: 10;
         }
 
         #scan-ui {
             position: absolute;
-            bottom: 40px; width: 100%;
+            bottom: 50px; width: 100%;
             text-align: center; pointer-events: none;
             z-index: 5;
         }
 
         .status-badge {
-            background: rgba(0,0,0,0.6);
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            background: rgba(0,0,0,0.8);
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 0.9rem;
             letter-spacing: 1px;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
         }
 
         .loader-ring {
-            width: 40px; height: 40px;
+            width: 30px; height: 30px;
             border: 2px solid rgba(255,255,255,0.1);
             border-top: 2px solid #fff;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -117,25 +150,32 @@
 </head>
 <body>
 
+    <!-- หน้าจอเปิดเครื่อง -->
     <div id="overlay">
         <div class="container">
             <h1>Memory Lens</h1>
-            <p id="main-desc">กำลังโหลดโมเดล AI และรูปภาพ...</p>
+            <p id="main-desc">รอสักครู่ ระบบกำลังเตรียมตัว...</p>
             <div class="image-preview">
-                <!-- เปลี่ยนมาใช้ไฟล์ภายในเครื่องแทนลิงก์ภายนอก -->
-                <img id="target-img" src="pepsiontime.png">
+                <!-- ใช้รูปต้นฉบับ pepsiontime.png -->
+                <img id="target-img" src="pepsiontime.png" alt="Memory Target">
             </div>
-            <button class="btn-start" id="start-btn" disabled>กรุณารอสักครู่...</button>
+            <button class="btn-start" id="start-btn" disabled>กำลังโหลด...</button>
         </div>
     </div>
 
+    <!-- จอนับถอยหลัง -->
+    <div id="countdown">3</div>
+
+    <!-- ส่วนทำงานหลัก -->
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
-        <video id="video-player" src="D_Logo_Reveal_for_Performing_Arts.mp4" loop playsinline></video>
+        
+        <!-- วิดีโอหลักที่ต้องการโชว์ -->
+        <video id="video-player" src="D_Logo_Reveal_for_Performing_Arts.mp4" playsinline loop></video>
 
         <div id="scan-ui">
             <div class="loader-ring" id="ui-loader"></div>
-            <span class="status-badge" id="status-text">🔍 สแกนที่รูปพวงกุญแจ...</span>
+            <span class="status-badge" id="status-text">🔍 ส่องไปที่พวงกุญแจของคุณ</span>
         </div>
     </div>
 
@@ -143,6 +183,7 @@
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
+        const countdownEl = document.getElementById('countdown');
         const mainDesc = document.getElementById('main-desc');
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
@@ -153,15 +194,14 @@
         let model;
         let targetFeatures;
         let isVideoPlaying = false;
-        const SIMILARITY_THRESHOLD = 0.88;
+        const SIMILARITY_THRESHOLD = 0.85; 
 
         function waitForImage(img) {
             return new Promise((resolve, reject) => {
-                if (img.complete && img.naturalWidth !== 0) {
-                    resolve();
-                } else {
+                if (img.complete && img.naturalWidth !== 0) resolve();
+                else {
                     img.onload = () => resolve();
-                    img.onerror = () => reject(new Error("ไม่พบไฟล์รูปภาพ 'pepsiontime.png' ในโฟลเดอร์เดียวกัน"));
+                    img.onerror = () => reject(new Error("Image missing"));
                 }
             });
         }
@@ -174,39 +214,49 @@
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
                 
-                mainDesc.innerText = "ระบบพร้อมทำงานแล้ว";
-                startBtn.innerText = "เริ่มต้นสแกน";
+                mainDesc.innerText = "ระบบพร้อมสแกนความทรงจำ";
+                startBtn.innerText = "เริ่มสแกน";
                 startBtn.disabled = false;
             } catch (e) {
-                console.error("Initialization Error:", e);
-                mainDesc.innerText = "❌ เกิดข้อผิดพลาด";
-                mainDesc.style.color = "#ff4757";
-                startBtn.innerText = "โหลดไม่สำเร็จ";
-                const errDetail = document.createElement('p');
-                errDetail.style.fontSize = "0.7rem";
-                errDetail.innerText = e.message;
-                overlay.appendChild(errDetail);
+                mainDesc.innerText = "❌ เกิดข้อผิดพลาดในการโหลด";
+                console.error(e);
             }
         }
 
-        startBtn.addEventListener('click', async () => {
+        async function startWithCountdown() {
             overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                cameraContainer.style.display = 'block';
-            }, 800);
+            setTimeout(() => overlay.style.display = 'none', 500);
 
+            countdownEl.style.display = 'flex';
+            
+            for (let i = 3; i > 0; i--) {
+                countdownEl.innerText = i;
+                await new Promise(r => setTimeout(r, 800));
+            }
+            
+            countdownEl.style.display = 'none';
+            openCamera();
+        }
+
+        async function openCamera() {
+            cameraContainer.style.display = 'block';
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" }, 
                     audio: false 
                 });
                 webcam.srcObject = stream;
+                
+                videoPlayer.load();
+                videoPlayer.play().then(() => videoPlayer.pause()).catch(e => console.log(e));
+                
                 predict();
             } catch (err) {
                 alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message);
             }
-        });
+        }
+
+        startBtn.addEventListener('click', startWithCountdown);
 
         function cosineSimilarity(tensorA, tensorB) {
             return tf.tidy(() => {
@@ -226,29 +276,25 @@
                     if (similarity > SIMILARITY_THRESHOLD) {
                         showVideo();
                     }
-                } catch (e) {
-                    console.warn("Prediction frame skipped", e);
-                }
+                } catch (e) { }
             }
-            setTimeout(predict, 300);
+            setTimeout(predict, 250);
         }
 
         function showVideo() {
             isVideoPlaying = true;
             uiLoader.style.display = 'none';
-            statusText.innerText = "✨ พบความทรงจำแล้ว!";
-            statusText.style.background = "rgba(46, 204, 113, 0.8)";
+            statusText.innerText = "✨ พบพวงกุญแจแล้ว!";
             
             videoPlayer.style.display = 'block';
-            videoPlayer.play().catch(e => console.error("Video play error:", e));
+            videoPlayer.play();
             
             videoPlayer.onclick = () => {
                 videoPlayer.pause();
                 videoPlayer.style.display = 'none';
                 isVideoPlaying = false;
                 uiLoader.style.display = 'block';
-                statusText.innerText = "🔍 สแกนที่รูปพวงกุญแจ...";
-                statusText.style.background = "rgba(0,0,0,0.6)";
+                statusText.innerText = "🔍 ส่องไปที่พวงกุญแจของคุณ";
             };
         }
 
