@@ -14,6 +14,7 @@
     
     <style>
         :root {
+            --accent-color: #ffffff;
             --bg-gradient: linear-gradient(180deg, #121212 0%, #000000 100%);
         }
 
@@ -83,8 +84,18 @@
             background: #000;
         }
 
-        #webcam {
-            width: 100%; height: 100%; object-fit: cover;
+        #webcam { width: 100%; height: 100%; object-fit: cover; }
+
+        /* หน้าจอโหลดวิดีโอเมื่อสแกนติด */
+        #video-loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1500;
         }
 
         /* เครื่องเล่นวิดีโอ */
@@ -158,18 +169,24 @@
         </div>
     </div>
 
+    <!-- หน้าจอตอนวิดีโอกำลังโหลด -->
+    <div id="video-loading">
+        <div class="loader-ring"></div>
+        <p style="letter-spacing: 2px; font-weight: 300;">กำลังเปิดความทรงจำ...</p>
+    </div>
+
     <!-- แถบแนะนำการหมุนจอ -->
     <div id="landscape-hint">🔄 แนะนำให้ดูวิดีโอในแนวนอนเพื่อความชัดเจน</div>
 
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
         <div id="scan-ui">
-            <div class="loader-ring" id="ui-loader"></div>
+            <div class="loader-ring"></div>
             <span class="status-badge" id="status-text">🔍 สแกนที่พวงกุญแจของคุณ</span>
         </div>
     </div>
 
-    <!-- วิดีโอที่จะเล่นเมื่อสแกนเจอ -->
+    <!-- วิดีโอหลัก -->
     <video id="video-player" src="Video.mp4" playsinline loop></video>
 
     <script>
@@ -179,8 +196,7 @@
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
-        const statusText = document.getElementById('status-text');
-        const uiLoader = document.getElementById('ui-loader');
+        const videoLoading = document.getElementById('video-loading');
         const landscapeHint = document.getElementById('landscape-hint');
 
         let model;
@@ -191,31 +207,26 @@
 
         async function init() {
             try {
-                // รอให้รูปโหลดเสร็จ
-                if (!targetImg.complete) {
-                    await new Promise(r => targetImg.onload = r);
-                }
-                
+                if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load();
-                
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
                 targetTensor.dispose();
-                
                 document.getElementById('main-desc').innerText = "พร้อมสแกนความทรงจำแล้ว";
                 startBtn.innerText = "เริ่มสแกน";
                 startBtn.disabled = false;
-            } catch (e) {
+            } catch (e) { 
                 document.getElementById('main-desc').innerText = "❌ เกิดข้อผิดพลาดในการโหลด";
-                console.error(e);
+                console.error(e); 
             }
         }
 
-        // เมื่อกดเริ่ม จะเข้ากล้องทันทีโดยไม่นับถอยหลัง
-        startBtn.addEventListener('click', async () => {
+        startBtn.addEventListener('click', () => {
             overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 500);
-            openCamera();
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                openCamera();
+            }, 500);
         });
 
         async function openCamera() {
@@ -226,14 +237,10 @@
                     audio: false 
                 });
                 webcam.srcObject = cameraStream;
-                
-                // เตรียมวิดีโอ
+                // เตรียมวิดีโอ (Prime the video for auto-play)
                 videoPlayer.load();
-                
                 requestAnimationFrame(predictLoop);
-            } catch (err) {
-                alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message);
-            }
+            } catch (err) { alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message); }
         }
 
         async function predictLoop() {
@@ -259,31 +266,43 @@
         function handleDetectionSuccess() {
             isDetected = true;
             
-            // 1. ปิดกล้องเพื่อประหยัดพลังงานและทำให้พื้นหลังดำ
+            // 1. ปิดกล้องทันทีและซ่อน UI สแกน
             if (cameraStream) {
                 cameraStream.getTracks().forEach(track => track.stop());
             }
             cameraContainer.style.display = 'none';
             
-            // 2. แสดงวิดีโอและเล่นทันที
-            videoPlayer.style.display = 'block';
-            videoPlayer.play();
-
-            // 3. ตรวจสอบว่าวิดีโอเป็นแนวนอนหรือไม่ และแนะนำการหมุนจอ
-            checkOrientation();
-            window.addEventListener('resize', checkOrientation);
+            // 2. แสดงหน้าจอโหลดระหว่างรอวิดีโอพร้อม
+            videoLoading.style.display = 'flex';
             
-            // แตะวิดีโอเพื่อกลับไปหน้าสแกนใหม่ (ถ้าต้องการ)
-            videoPlayer.onclick = () => {
-                location.reload(); // รีโหลดเพื่อเริ่มใหม่แบบคลีนๆ
+            // 3. สั่งเล่นวิดีโอ (Muted play first to bypass mobile policies if needed)
+            const playPromise = videoPlayer.play();
+
+            // 4. ใช้ event 'playing' เพื่อระบุว่าวิดีโอเริ่มเล่นจริง (มีภาพออกมาแล้ว)
+            videoPlayer.onplaying = () => {
+                videoLoading.style.display = 'none';
+                videoPlayer.style.display = 'block';
+                checkOrientation();
+                window.addEventListener('resize', checkOrientation);
             };
+
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error("Auto-play failed:", error);
+                    // หากยังเล่นไม่ได้ ให้รอ Event อื่น หรือแสดงปุ่มกดเล่น
+                    videoLoading.innerHTML = '<p>แตะหน้าจอเพื่อเริ่มวิดีโอ</p>';
+                    videoLoading.onclick = () => {
+                        videoPlayer.play();
+                    };
+                });
+            }
+
+            videoPlayer.onclick = () => location.reload();
         }
 
         function checkOrientation() {
-            // ถ้าวิดีโอกว้างกว่าสูง (แนวนอน) และหน้าจอมือถือสูงกว่ากว้าง (แนวตั้ง)
             const isVideoLandscape = videoPlayer.videoWidth > videoPlayer.videoHeight;
             const isScreenPortrait = window.innerHeight > window.innerWidth;
-
             if (isVideoLandscape && isScreenPortrait) {
                 landscapeHint.style.display = 'block';
             } else {
