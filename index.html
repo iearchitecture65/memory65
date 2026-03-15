@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
     
     <!-- A-Frame & AR.js for NFT -->
-    <!-- หมายเหตุ: ใช้เวอร์ชันที่รองรับ NFT โดยเฉพาะ -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     
@@ -26,7 +25,6 @@
             color: #fff;
         }
         
-        /* หน้าจอเริ่มต้น (Landing Page) */
         #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -52,14 +50,6 @@
             margin-bottom: 10px;
             text-transform: uppercase;
             font-size: 1.4rem;
-        }
-
-        .instruction {
-            font-weight: 300;
-            font-size: 0.85rem;
-            opacity: 0.7;
-            margin-bottom: 30px;
-            line-height: 1.6;
         }
 
         .image-preview {
@@ -92,12 +82,10 @@
             letter-spacing: 2px;
             border-radius: 100px;
             cursor: pointer;
-            transition: all 0.3s ease;
             text-transform: uppercase;
             font-weight: 600;
         }
 
-        /* UI ขณะกำลังสแกน */
         #ui-layer {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -114,19 +102,21 @@
             font-size: 0.8rem;
             letter-spacing: 1px;
             opacity: 0.8;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
         }
 
-        /* Loader ขณะโหลดข้อมูลรูปภาพ (Descriptor) */
         .arjs-loader {
             height: 100%; width: 100%;
             position: absolute; top: 0; left: 0;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             z-index: 9998;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             color: white;
+            text-align: center;
+            padding: 20px;
         }
 
         a-scene { display: none; }
@@ -137,29 +127,27 @@
     <div id="overlay">
         <div class="container">
             <h1>Memory Lens</h1>
-            <p class="instruction">ส่องไปที่รูปน้องแมวบนพวงกุญแจ<br>เพื่อเปิดดูวิดีโอพิเศษของคุณ</p>
-            
+            <p style="font-weight: 300; font-size: 0.85rem; opacity: 0.7; margin-bottom: 30px;">
+                สแกนรูปน้องแมวเพื่อดูวิดีโอ
+            </p>
             <div class="image-preview">
-                <img src="pepsiontime.png" alt="Scanning Target">
+                <img src="pepsiontime.png" alt="Target">
             </div>
-
-            <button class="btn-start" id="btnStart">เข้าสู่ระบบสแกน</button>
+            <button class="btn-start" id="btnStart">เริ่มสแกน</button>
         </div>
     </div>
 
-    <!-- ข้อความแจ้งเตือนขณะสแกน -->
     <div id="ui-layer">
-        <div class="scan-msg" id="scanMsg">🔍 กำลังค้นหารูปน้องแมว...</div>
+        <div class="scan-msg" id="scanMsg">🔍 กำลังรอสแกนรูป...</div>
     </div>
 
-    <!-- Loader -->
     <div class="arjs-loader" id="loader" style="display: none;">
-        <div>กำลังประมวลผลรูปภาพ...</div>
+        <div>กำลังเตรียมความทรงจำ...</div>
     </div>
 
     <a-scene 
         vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true;"
+        renderer="logarithmicDepthBuffer: true; antialias: true;"
         embedded
         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
         
@@ -175,22 +163,16 @@
             </video>
         </a-assets>
 
-        <!-- 
-            สแกนรูปภาพจริง (NFT) 
-            url: ชี้ไปยังโฟลเดอร์ descriptors และชื่อไฟล์ (ห้ามใส่นามสกุลไฟล์)
-        -->
+        <!-- แก้ไข URL ให้ตรงกับไฟล์ในโฟลเดอร์ descriptors ของคุณ -->
         <a-nft
             type="nft"
-            url="./descriptors/pepsi-marker"
+            url="./descriptors/pepsiontime"
             smooth="true"
             smoothCount="10"
             smoothTolerance=".01"
             smoothThreshold="5">
             
-            <!-- 
-                ขนาดวิดีโอในโหมด NFT จะใช้หน่วยสัมพันธ์กับความละเอียดรูปภาพ 
-                อาจต้องปรับ scale หรือ width/height ตามความเหมาะสม
-            -->
+            <!-- ปรับขนาดวิดีโอให้พอดี (NFT ใช้หน่วยพิกเซล) -->
             <a-video 
                 src="#v" 
                 width="160" 
@@ -218,39 +200,33 @@
                 overlay.style.display = 'none';
                 scene.style.display = 'block';
                 uiLayer.style.display = 'block';
-                loader.style.display = 'flex'; // แสดง loader ขณะระบบกำลังเริ่ม
+                loader.style.display = 'flex';
             }, 800);
 
             try {
                 video.load();
                 await video.play();
                 video.pause();
-            } catch (e) {
-                console.log("Video unlock success");
-            }
+            } catch (e) { console.log("Unlock Ready"); }
         });
 
-        // เมื่อระบบโหลดข้อมูล Descriptor เสร็จสิ้น
+        // เมื่อระบบ NFT โหลดไฟล์จาก descriptors สำเร็จ
         window.addEventListener('arjs-nft-loaded', () => {
             loader.style.display = 'none';
-            console.log("NFT Data Loaded Successfully");
+            console.log("NFT Loaded!");
         });
 
         const nftMarker = document.querySelector('a-nft');
-
         nftMarker.addEventListener('markerFound', () => {
-            scanMsg.innerText = "🎬 กำลังแสดงความทรงจำ...";
+            scanMsg.innerText = "🎬 กำลังเล่นวิดีโอ...";
             video.muted = false;
-            video.play().catch(e => console.error(e));
+            video.play();
         });
 
         nftMarker.addEventListener('markerLost', () => {
-            scanMsg.innerText = "🔍 ส่องไปที่รูปน้องแมว...";
+            scanMsg.innerText = "🔍 สแกนที่รูปน้องแมว...";
             video.pause();
         });
-
-        // ดักจับ error ป้องกันหน้าเว็บขาว
-        window.addEventListener('unhandledrejection', (e) => e.preventDefault());
     </script>
 </body>
 </html>
