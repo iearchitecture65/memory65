@@ -144,12 +144,21 @@
             margin: 0 auto 15px;
         }
 
+        /* ตัวแสดงคะแนนความเหมือน (สำหรับ Debug - ซ่อนไว้ถ้าไม่ต้องการ) */
+        #debug-score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 10px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <!-- หน้าจอเปิดเครื่อง -->
     <div id="overlay">
         <div class="container">
             <h1>Memory Lens</h1>
@@ -161,14 +170,11 @@
         </div>
     </div>
 
-    <!-- จอนับถอยหลัง -->
     <div id="countdown">3</div>
 
-    <!-- ส่วนทำงานหลัก -->
     <div id="camera-container">
+        <div id="debug-score"></div>
         <video id="webcam" autoplay playsinline></video>
-        
-        <!-- วิดีโอหลัก -->
         <video id="video-player" src="D_Logo_Reveal_for_Performing_Arts.mp4" playsinline loop></video>
 
         <div id="scan-ui">
@@ -188,13 +194,15 @@
         const videoPlayer = document.getElementById('video-player');
         const statusText = document.getElementById('status-text');
         const uiLoader = document.getElementById('ui-loader');
+        const debugScore = document.getElementById('debug-score');
 
         let model;
         let targetFeatures;
         let isVideoPlaying = false;
         
-        // ปรับลด Threshold ลงเพื่อให้สแกนติดง่ายขึ้นในสภาพแสงที่ต่างกัน (0.70 - 0.80 แนะนำ)
-        const SIMILARITY_THRESHOLD = 0.75; 
+        // ปรับลด Threshold ลงเพื่อให้สแกนติดง่ายขึ้นในสภาวะแสงจริง
+        // 0.60 เป็นค่าที่สมดุลระหว่างความแม่นยำและการสแกนติดง่าย
+        const SIMILARITY_THRESHOLD = 0.60; 
 
         function waitForImage(img) {
             return new Promise((resolve, reject) => {
@@ -211,10 +219,9 @@
                 await waitForImage(targetImg);
                 model = await mobilenet.load();
                 
-                // สกัดฟีเจอร์จากรูปต้นฉบับเพียงครั้งเดียว
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
-                targetTensor.dispose(); // ลบ Tensor ที่ไม่ใช้แล้วเพื่อคืนหน่วยความจำ
+                targetTensor.dispose();
                 
                 mainDesc.innerText = "ระบบพร้อมสแกนความทรงจำ";
                 startBtn.innerText = "เริ่มสแกน";
@@ -241,16 +248,15 @@
         async function openCamera() {
             cameraContainer.style.display = 'block';
             try {
+                // เพิ่มความละเอียด ideal เพื่อให้ AI เห็นภาพชัดขึ้น
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }, 
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, 
                     audio: false 
                 });
                 webcam.srcObject = stream;
-                
-                // กระตุ้นให้วิดีโอโหลดไฟล์เตรียมไว้
                 videoPlayer.load();
                 
-                // เริ่มระบบตรวจจับ
+                // เริ่มระบบตรวจจับทันที
                 requestAnimationFrame(predictLoop);
             } catch (err) {
                 alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message);
@@ -259,33 +265,32 @@
 
         startBtn.addEventListener('click', startWithCountdown);
 
-        // ระบบลูปตรวจจับแบบประหยัดหน่วยความจำ
         async function predictLoop() {
             if (!isVideoPlaying && model) {
                 try {
-                    // ใช้ tf.tidy เพื่อล้าง Tensors อัตโนมัติ ป้องกันเครื่องค้าง (spinning)
                     const similarity = tf.tidy(() => {
                         const webcamTensor = tf.browser.fromPixels(webcam);
                         const webcamFeatures = model.infer(webcamTensor, true);
                         
-                        // คำนวณความเหมือน (Cosine Similarity)
                         const a = tf.div(targetFeatures, tf.norm(targetFeatures));
                         const b = tf.div(webcamFeatures, tf.norm(webcamFeatures));
                         return tf.sum(tf.mul(a, b)).dataSync()[0];
                     });
 
-                    // ตรวจสอบค่าความเหมือน
+                    // แสดงคะแนนสำหรับการทดสอบ (Debug)
+                    debugScore.innerText = "Score: " + similarity.toFixed(2);
+
                     if (similarity > SIMILARITY_THRESHOLD) {
                         showVideo();
-                        return; // ออกจากลูปเมื่อพบภาพแล้ว
+                        return;
                     }
                 } catch (e) {
                     console.warn("Frame skipped:", e);
                 }
             }
             
-            // วนลูปการทำงานใหม่ (ประมาณ 4 ครั้งต่อวินาทีเพื่อให้ไม่หนักเครื่องเกินไป)
-            setTimeout(() => requestAnimationFrame(predictLoop), 250);
+            // ปรับเวลาให้ถี่ขึ้น (100ms) เพื่อให้สแกนติดไวขึ้น
+            setTimeout(() => requestAnimationFrame(predictLoop), 100);
         }
 
         function showVideo() {
@@ -300,7 +305,6 @@
                 statusText.innerText = "⚠️ กรุณาแตะที่หน้าจอเพื่อเล่นวิดีโอ";
             });
             
-            // แตะที่วิดีโอเพื่อปิดและกลับไปสแกนใหม่
             videoPlayer.onclick = () => {
                 videoPlayer.pause();
                 videoPlayer.style.display = 'none';
