@@ -91,35 +91,26 @@
         #play-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 2500;
             cursor: pointer;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
 
-        .play-btn-visual {
-            width: 90px;
-            height: 90px;
-            border: 2px solid rgba(255,255,255,0.6);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 24px;
-            background: rgba(255,255,255,0.1);
-            box-shadow: 0 0 20px rgba(255,255,255,0.1);
-        }
-
-        .play-icon-svg {
-            width: 32px;
-            height: 32px;
-            fill: #fff;
-            margin-left: 5px; /* Adjust for visual centering */
+        #play-overlay p {
+            font-weight: 300;
+            /* ปรับขนาดตัวอักษรให้เล็กลง */
+            font-size: 0.85rem; 
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
         }
 
         /* เครื่องเล่นวิดีโอ */
@@ -236,12 +227,9 @@
         <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     </button>
 
-    <!-- หน้าจอแตะเพื่อเล่นที่สวยงามขึ้น -->
+    <!-- หน้าจอแตะเพื่อเล่น (เหลือเพียงข้อความมินิมอล) -->
     <div id="play-overlay">
-        <div class="play-btn-visual">
-            <svg class="play-icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-        <p style="font-weight: 300; font-size: 1.1rem; letter-spacing: 1px; color: rgba(255,255,255,0.9);">พบความทรงจำแล้ว แตะเพื่อรับชม</p>
+        <p>พบความทรงจำแล้ว แตะเพื่อรับชม</p>
     </div>
 
     <div id="camera-container">
@@ -356,26 +344,21 @@
             };
         }
 
-        // ฟังก์ชันเข้าโหมดเต็มจอแบบจริง (Native Fullscreen)
         fullscreenHint.onclick = () => {
             enterFullscreen(videoPlayer);
             fullscreenHint.style.display = 'none';
         };
 
         function enterFullscreen(element) {
-            // สำหรับอุปกรณ์ส่วนใหญ่
             if (element.requestFullscreen) {
                 element.requestFullscreen();
             } 
-            // สำหรับ Safari บน iPhone (สำคัญมาก)
             else if (element.webkitEnterFullscreen) {
                 element.webkitEnterFullscreen();
             }
-            // สำหรับ Safari บน Mac/iPad
             else if (element.webkitRequestFullscreen) {
                 element.webkitRequestFullscreen();
             }
-            // สำหรับ Chrome รุ่นเก่า
             else if (element.mozRequestFullScreen) {
                 element.mozRequestFullScreen();
             }
@@ -390,7 +373,6 @@
         function handleFullscreenChange() {
             const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
             if (isFullscreen) {
-                // พยายามล็อคแนวตั้งหรือนอนตามคลิป (ถ้าเบราว์เซอร์รองรับ)
                 if (screen.orientation && screen.orientation.lock && videoPlayer.videoWidth > videoPlayer.videoHeight) {
                     screen.orientation.lock('landscape').catch(() => {});
                 }
