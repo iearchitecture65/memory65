@@ -200,9 +200,8 @@
         let targetFeatures;
         let isVideoPlaying = false;
         
-        // ปรับลด Threshold ลงเพื่อให้สแกนติดง่ายขึ้นในสภาวะแสงจริง
-        // 0.60 เป็นค่าที่สมดุลระหว่างความแม่นยำและการสแกนติดง่าย
-        const SIMILARITY_THRESHOLD = 0.60; 
+        // ปรับลด Threshold ลงเป็น 0.1 เพื่อให้สแกนติดง่ายที่สุด (แทบจะเล่นวิดีโอทันที)
+        const SIMILARITY_THRESHOLD = 0.1; 
 
         function waitForImage(img) {
             return new Promise((resolve, reject) => {
@@ -248,7 +247,6 @@
         async function openCamera() {
             cameraContainer.style.display = 'block';
             try {
-                // เพิ่มความละเอียด ideal เพื่อให้ AI เห็นภาพชัดขึ้น
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, 
                     audio: false 
@@ -256,7 +254,6 @@
                 webcam.srcObject = stream;
                 videoPlayer.load();
                 
-                // เริ่มระบบตรวจจับทันที
                 requestAnimationFrame(predictLoop);
             } catch (err) {
                 alert("ไม่สามารถเข้าถึงกล้องได้: " + err.message);
@@ -277,7 +274,6 @@
                         return tf.sum(tf.mul(a, b)).dataSync()[0];
                     });
 
-                    // แสดงคะแนนสำหรับการทดสอบ (Debug)
                     debugScore.innerText = "Score: " + similarity.toFixed(2);
 
                     if (similarity > SIMILARITY_THRESHOLD) {
@@ -289,7 +285,6 @@
                 }
             }
             
-            // ปรับเวลาให้ถี่ขึ้น (100ms) เพื่อให้สแกนติดไวขึ้น
             setTimeout(() => requestAnimationFrame(predictLoop), 100);
         }
 
