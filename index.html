@@ -45,10 +45,22 @@
 
         .container { width: 100%; max-width: 400px; }
         h1 { font-weight: 300; letter-spacing: 6px; text-transform: uppercase; font-size: 1.8rem; margin-bottom: 5px; }
-        p { font-weight: 300; font-size: 1rem; opacity: 0.6; margin-bottom: 40px; }
+        
+        #loading-info {
+            margin-bottom: 30px;
+        }
+
+        .loading-text { font-weight: 300; font-size: 1rem; opacity: 0.8; margin: 0; }
+        
+        #timer-box {
+            font-size: 0.8rem;
+            opacity: 0.5;
+            margin-top: 5px;
+            font-weight: 300;
+        }
 
         .image-preview {
-            width: 220px; height: 220px;
+            width: 200px; height: 200px;
             background: rgba(255,255,255,0.05);
             border-radius: 50%;
             margin: 0 auto 40px;
@@ -74,8 +86,14 @@
             border-radius: 100px; cursor: pointer; font-weight: 600;
             text-transform: uppercase;
             box-shadow: 0 10px 30px rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
         }
-        .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .btn-start:disabled { 
+            background: #222; 
+            color: #444; 
+            cursor: not-allowed; 
+            box-shadow: none;
+        }
 
         /* ส่วนแสดงผลกล้อง */
         #camera-container {
@@ -146,20 +164,19 @@
         }
 
         .loader-ring {
-            width: 30px; height: 30px;
+            width: 25px; height: 25px;
             border: 2px solid rgba(255,255,255,0.1);
             border-top: 2px solid #fff;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 10px;
         }
 
-        /* ปุ่มแนะนำเต็มจอ (ปรับความทึบให้เห็นชัดขึ้นเหนือวิดีโอ) */
+        /* ปุ่มแนะนำเต็มจอ */
         #fullscreen-hint {
             position: fixed;
             top: 20px; left: 50%;
             transform: translateX(-50%);
-            /* ปรับสีให้ทึบขึ้นเพื่อสู้กับแสงวิดีโอ (Black 80%) */
             background: rgba(20, 20, 20, 0.85); 
             color: #ffffff;
             padding: 12px 28px;
@@ -168,7 +185,6 @@
             font-weight: 400;
             z-index: 3000;
             display: none;
-            /* ขอบปุ่มให้ดูมีมิติ */
             border: 1px solid rgba(255, 255, 255, 0.25); 
             backdrop-filter: blur(12px);
             cursor: pointer;
@@ -213,11 +229,16 @@
     <div id="overlay">
         <div class="container">
             <h1>Memory Lens</h1>
-            <p id="main-desc">กำลังโหลดโมเดล AI...</p>
+            <div id="loading-info">
+                <p class="loading-text" id="main-desc">กำลังโหลด</p>
+                <div id="timer-box">ประมาณ <span id="seconds">5</span> วินาที</div>
+            </div>
+            
             <div class="image-preview">
                 <img id="target-img" src="picture.png" alt="Target Image">
             </div>
-            <button class="btn-start" id="start-btn" disabled>กรุณารอสักครู่</button>
+            
+            <button class="btn-start" id="start-btn" disabled>รอสักครู่</button>
         </div>
     </div>
 
@@ -259,6 +280,8 @@
         const playOverlay = document.getElementById('play-overlay');
         const fullscreenHint = document.getElementById('fullscreen-hint');
         const reloadBtn = document.getElementById('reload-btn');
+        const secondsSpan = document.getElementById('seconds');
+        const timerBox = document.getElementById('timer-box');
 
         let model;
         let targetFeatures;
@@ -266,18 +289,48 @@
         let cameraStream = null;
         const SIMILARITY_THRESHOLD = 0.58; 
 
+        // ระบบนับถอยหลังจำลองที่สอดคล้องกับการโหลดจริง
+        let timeLeft = 5;
+        let countdownStarted = false;
+
+        function startTimer() {
+            if (countdownStarted) return;
+            countdownStarted = true;
+            const timer = setInterval(() => {
+                if (timeLeft > 1) {
+                    timeLeft--;
+                    secondsSpan.innerText = timeLeft;
+                } else {
+                    secondsSpan.innerText = "ใกล้เสร็จแล้ว...";
+                    clearInterval(timer);
+                }
+            }, 1000);
+            return timer;
+        }
+
         async function init() {
+            const timer = startTimer();
             try {
+                // โหลด MobileNet (ใช้เวลาประมาณ 3-7 วินาทีขึ้นอยู่กับเน็ต)
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
+                
+                // เริ่มโหลด Model
                 model = await mobilenet.load();
+                
+                // ประมวลผลรูปภาพเป้าหมาย
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
                 targetTensor.dispose();
-                document.getElementById('main-desc').innerText = "พร้อมสแกนความทรงจำแล้ว";
+                
+                // เมื่อโหลดเสร็จแล้ว
+                clearInterval(timer);
+                timerBox.style.display = 'none';
+                document.getElementById('main-desc').innerText = "พร้อมใช้งาน";
                 startBtn.innerText = "เริ่มสแกน";
                 startBtn.disabled = false;
             } catch (e) { 
-                document.getElementById('main-desc').innerText = "ไม่สามารถโหลดระบบได้";
+                document.getElementById('main-desc').innerText = "การโหลดผิดพลาด";
+                timerBox.innerText = "กรุณารีโหลดหน้าเว็บใหม่";
                 console.error(e); 
             }
         }
