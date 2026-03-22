@@ -106,12 +106,16 @@
             z-index: 500;
         }
 
+        /* ปรับปรุง CSS ของ Webcam เพื่อซ่อนปุ่ม Play/Pause ที่อาจหลุดออกมา */
         #webcam { 
             width: 100%; height: 100%; object-fit: cover; 
             transition: filter 0.5s ease, transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
             transform-origin: center center;
-            pointer-events: none;
+            pointer-events: none; /* ห้ามแตะต้องเพื่อกันปุ่มโผล่ */
         }
+        /* ลบ Controls มาตรฐานของเบราว์เซอร์ */
+        video::-webkit-media-controls { display:none !important; }
+        video::-webkit-media-controls-enclosure { display:none !important; }
 
         .scan-frame {
             position: absolute;
@@ -181,16 +185,16 @@
             pointer-events: none; transition: opacity 0.4s ease;
         }
 
-        /* Video Container - เพิ่มความเข้มงวด */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none !important; 
             z-index: 2000;
             background: #000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
 
-        /* คลาสจำลอง Fullscreen เพื่อแก้ปัญหา Browser ไม่รองรับ */
         #video-container.simulated-fs {
             display: block !important;
             width: 100vw !important;
@@ -199,20 +203,21 @@
             top: 0 !important;
             left: 0 !important;
             z-index: 9999 !important;
+            opacity: 1;
         }
         
         #video-container iframe { width: 100%; height: 100%; border: 0; }
 
-        /* ปุ่มเต็มจอ */
         #fullscreen-toggle {
             position: absolute;
             top: -100px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9);
+            background: #fff;
             color: #000; padding: 12px 24px; border-radius: 50px;
-            font-size: 0.85rem; z-index: 1600; cursor: pointer;
+            font-size: 0.85rem; z-index: 10000; cursor: pointer;
             display: flex; align-items: center; gap: 10px; font-weight: 400;
             transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            pointer-events: auto;
         }
         
         #fullscreen-toggle.show { top: 30px; }
@@ -248,7 +253,8 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
 
-        <video id="webcam" autoplay playsinline muted></video>
+        <!-- เพิ่ม disablePictureInPicture และห้ามโชว์ Controls -->
+        <video id="webcam" autoplay playsinline muted disablePictureInPicture></video>
         
         <div class="zoom-controls" id="zoom-ui">
             <div class="zoom-btn active" data-zoom="1.0">1x</div>
@@ -442,18 +448,17 @@
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
                 
-                // แสดง container วิดีโอ
+                // ปลดล็อกการซ่อนและแสดงวิดีโอ
                 videoContainer.style.setProperty('display', 'block', 'important');
+                videoContainer.style.opacity = '1';
                 
                 const iframe = document.createElement('iframe');
                 iframe.id = "video-iframe";
                 iframe.src = PREVIEW_URL;
-                // เพิ่ม allow แบบเต็มสูบเพื่อให้ปุ่มภายใน iframe ทำงานได้ดีที่สุด
                 iframe.allow = "autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture";
                 iframe.allowFullscreen = true;
                 
                 iframe.onload = () => {
-                    // ปุ่มจะเด้งออกมาหลังจากวิดีโอ (Iframe Shell) พร้อม 2 วินาที
                     setTimeout(() => { 
                         fsToggle.classList.add('show'); 
                     }, 2000); 
@@ -464,23 +469,12 @@
             }, 400);
         }
 
-        // ฟังก์ชัน Fullscreen แบบใหม่: ใช้ Simulated Fullscreen เป็นหลักเพื่อความชัวร์
         fsToggle.onclick = () => {
-            // 1. พยายามใช้ Native Fullscreen ก่อน (ถ้าได้ก็ดี)
             const el = videoContainer;
-            const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-            
-            if (requestFS) {
-                requestFS.call(el).catch(() => {
-                    // หาก Native โดนบล็อก ให้ใช้ Simulated แทน
-                    videoContainer.classList.add('simulated-fs');
-                });
-            } else {
-                // หากไม่มี API ให้ใช้ Simulated ทันที
-                videoContainer.classList.add('simulated-fs');
-            }
+            // ใช้ Simulated Fullscreen (ทับจอ 100%) เพราะเสถียรกว่าใน Canvas
+            videoContainer.classList.add('simulated-fs');
 
-            // 2. เมื่อกดแล้วให้ปุ่มหายไปทันทีตามคำขอ
+            // เมื่อกดแล้วให้ปุ่มหายไป
             fsToggle.classList.remove('show');
             setTimeout(() => { fsToggle.style.display = 'none'; }, 600);
         };
