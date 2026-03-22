@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory 65</title>
+    <title>Memory Lens AI</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -63,7 +63,6 @@
             background: #000;
             z-index: 2;
             display: none;
-            /* ใช้ transform แทน top เพื่อความลื่นไหล */
             will-change: transform;
         }
 
@@ -79,7 +78,6 @@
             animation: scanning 1.8s linear infinite; 
         }
         
-        /* เอฟเฟกต์ขาวดำและซูมเมื่อเริ่มวิเคราะห์ */
         .analyzing img { 
             transform: scale(1.08); 
             filter: grayscale(1) contrast(1.3) brightness(0.9);
@@ -127,7 +125,6 @@
             width: 100%; height: 2px;
             background: #000;
             box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            /* ใช้ transform บังคับใช้ GPU เพื่อแก้ปัญหากระตุก */
             will-change: transform;
             animation: scanHardware 2.5s ease-in-out infinite;
         }
@@ -243,7 +240,8 @@
         <span style="font-size:0.85rem; opacity:0.5; margin-top:8px">แตะเพื่อเปิดรับชม</span>
     </div>
 
-    <video id="video-player" src="Video.mp4" playsinline loop controls></video>
+    <!-- เปลี่ยนจากไฟล์ Video.mp4 เป็นลิงก์ Google Drive -->
+    <video id="video-player" src="https://drive.google.com/uc?id=1K6XKIMPY8ZB4O5oECe9Qg3k6urdiXyrT" playsinline loop controls crossorigin="anonymous"></video>
 
     <script>
         const targetImg = document.getElementById('target-img');
