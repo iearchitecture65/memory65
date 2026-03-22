@@ -72,18 +72,41 @@
             75% { content: '...'; }
         }
 
-        /* แอนิเมชันกระพริบ 2 ทีแล้วขยาย */
-        @keyframes imageFlashAndExpand {
-            0% { filter: brightness(1); transform: scale(1); opacity: 0.9; }
-            15% { filter: brightness(2); opacity: 1; }
-            30% { filter: brightness(1); opacity: 0.9; }
-            45% { filter: brightness(2); opacity: 1; }
-            60% { filter: brightness(1); transform: scale(1); opacity: 0.9; }
-            100% { filter: brightness(1.2); transform: scale(3); opacity: 0; }
+        /* แอนิเมชันกระพริบช้าลง ขยายเล็กน้อย และเปลี่ยนเป็นขาวดำ */
+        @keyframes imageTransitionEffect {
+            0% { filter: brightness(1) grayscale(0); transform: scale(1); opacity: 0.9; }
+            20% { filter: brightness(1.8) grayscale(0); opacity: 1; }
+            40% { filter: brightness(1) grayscale(0); opacity: 0.9; }
+            60% { filter: brightness(1.8) grayscale(0); opacity: 1; }
+            75% { filter: brightness(1) grayscale(1); transform: scale(1); opacity: 0.9; } /* จังหวะเส้นถึงล่างสุด */
+            90% { filter: brightness(1) grayscale(1); transform: scale(1.1); opacity: 0.6; }
+            100% { filter: brightness(1.1) grayscale(1); transform: scale(1.15); opacity: 0; }
         }
 
         .start-animating img {
-            animation: imageFlashAndExpand 1.2s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+            animation: imageTransitionEffect 2s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+        }
+
+        /* เส้นสแกนตอนเปลี่ยนหน้า */
+        .preview-scan-line {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: #000;
+            z-index: 2;
+            display: none;
+            will-change: transform;
+        }
+
+        @keyframes scanOnceSmooth { 
+            0% { transform: translateY(0); opacity: 1; } 
+            100% { transform: translateY(157px); opacity: 1; } 
+        }
+
+        .start-animating .preview-scan-line {
+            display: block;
+            /* วิ่งลงมาถึงพื้นตอนแอนิเมชันรูปถึงจังหวะขาวดำ (ประมาณ 1.5s) */
+            animation: scanOnceSmooth 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         .img-loader {
@@ -194,7 +217,7 @@
         
         #video-container iframe { width: 100%; height: 100%; border: 0; }
 
-        /* ข้อความสถานะคงที่กึ่งกลาง */
+        /* ข้อความสถานะกึ่งกลาง */
         .status-msg {
             position: absolute;
             bottom: 12%; width: 100%;
@@ -235,6 +258,7 @@
     <div id="overlay">
         <div class="preview-box" id="preview-container">
             <div class="img-loader" id="img-loader"></div>
+            <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
         </div>
         <button class="btn-start" id="start-btn" disabled>
@@ -301,7 +325,6 @@
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 10; 
 
-        // ฟังก์ชันอัปเดตสถานะแบบนิ่งๆ กึ่งกลาง
         function updateStatus(msg, color = "#000") {
             if (lastStatusMsg === msg) return;
             lastStatusMsg = msg;
@@ -340,16 +363,17 @@
                 targetGridData = results.grids;
                 
                 btnText.innerText = 'เริ่มสแกน';
-                // ลบคลาส dots ออกจากปุ่มเมื่อพร้อมสแกน
                 startBtn.querySelector('.dots').classList.remove('dots');
                 startBtn.disabled = false;
             } catch (e) { btnText.innerText = "เกิดข้อผิดพลาด"; }
         }
 
         startBtn.onclick = () => {
+            // เริ่มแอนิเมชันกระพริบ ขยาย และเส้นสแกน
             previewContainer.classList.add('start-animating');
             startBtn.disabled = true;
             
+            // หน่วงเวลา 2 วินาทีเพื่อให้แอนิเมชันขาวดำและขยายทำงานจนจบ
             setTimeout(() => {
                 overlay.style.opacity = '0';
                 setTimeout(async () => {
@@ -371,7 +395,7 @@
                         };
                     } catch (err) { updateStatus('ไม่สามารถเข้าถึงกล้องได้', '#ff3b30'); }
                 }, 500);
-            }, 1200);
+            }, 2000);
         };
 
         async function applyAdaptiveZoom(val, el) {
