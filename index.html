@@ -193,10 +193,10 @@
         /* ปุ่มเต็มจอแบบเด้งลงมาจากด้านบนกึ่งกลาง */
         #fullscreen-toggle {
             position: absolute;
-            top: -100px; /* เริ่มต้นซ่อนไว้เหนือจอ */
+            top: -100px; 
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.4);
@@ -215,7 +215,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
-        /* แสดงปุ่ม */
         #fullscreen-toggle.show {
             top: 30px;
         }
@@ -368,10 +367,27 @@
                         cameraContainer.style.display = 'block';
                         try {
                             videoStream = await navigator.mediaDevices.getUserMedia({ 
-                                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                                video: { 
+                                    facingMode: "environment", 
+                                    width: { ideal: 1280 }, 
+                                    height: { ideal: 720 },
+                                    // ขอซูมเบื้องต้น
+                                    zoom: 2.0
+                                } 
                             });
                             webcam.srcObject = videoStream;
                             webcam.onloadedmetadata = () => {
+                                // พยายามสั่งซูมเลนส์กล้องจริง (สำหรับเครื่องที่รองรับ)
+                                const track = videoStream.getVideoTracks()[0];
+                                const capabilities = track.getCapabilities();
+                                if (capabilities.zoom) {
+                                    track.applyConstraints({
+                                        advanced: [{ zoom: Math.min(capabilities.zoom.max, 2.0) }]
+                                    }).catch(() => {});
+                                }
+
+                                if (capabilities.torch) flashBtn.style.display = 'flex';
+
                                 setTimeout(() => {
                                     isReadyToAnalyze = true;
                                     requestAnimationFrame(predict);
@@ -398,7 +414,9 @@
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
-                    const roiW = w * 0.45;
+                    
+                    // ปรับ ROI ให้เจาะจงจุดกึ่งกลางมากขึ้น (จำลอง Digital Zoom สำหรับ AI)
+                    const roiW = w * 0.42; // บีบพื้นที่วิเคราะห์ให้แคบลงเพื่อความแม่นยำของการซูม
                     const roiH = roiW * (10/16);
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
@@ -465,41 +483,37 @@
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
                 
-                // เริ่มแสดงวิดีโอทันที
-                iframeTarget.innerHTML = `
-                    <iframe 
-                        id="video-iframe"
-                        src="${PREVIEW_URL}" 
-                        allow="autoplay; fullscreen" 
-                        allowfullscreen>
-                    </iframe>`;
-                videoContainer.style.display = 'block';
+                const iframe = document.createElement('iframe');
+                iframe.id = "video-iframe";
+                iframe.src = PREVIEW_URL;
+                iframe.allow = "autoplay; fullscreen";
+                iframe.allowFullscreen = true;
+                
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        fsToggle.classList.add('show');
+                    }, 2000); 
+                };
 
-                // --- หัวใจหลัก: เด้งปุ่มออกมาหลังจากวิดีโอเล่นไปแล้ว 2 วินาที ---
-                setTimeout(() => {
-                    fsToggle.classList.add('show');
-                }, 2000);
+                iframeTarget.innerHTML = '';
+                iframeTarget.appendChild(iframe);
+                videoContainer.style.display = 'block';
 
             }, 400);
         }
 
-        // ฟังก์ชัน Fullscreen แบบครอบคลุมเบราว์เซอร์มือถือ
         fsToggle.onclick = () => {
             const el = videoContainer; 
-            
-            // ตรวจสอบทุกคำสั่งที่เป็นไปได้สำหรับ Fullscreen
             const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
             
             if (requestFS) {
                 requestFS.call(el).then(() => {
-                    // เมื่อขยายสำเร็จ ให้ปุ่มหายไปทันทีตามคำขอ
                     fsToggle.classList.remove('show');
                     setTimeout(() => fsToggle.style.display = 'none', 600);
                 }).catch(err => {
                     console.error("Fullscreen failed:", err);
-                    // หากขยายผ่าน Container ไม่ได้ ให้พยายามขยายที่ Iframe โดยตรง
                     const iframe = document.getElementById('video-iframe');
-                    if (iframe.webkitEnterFullscreen) iframe.webkitEnterFullscreen();
+                    if (iframe && iframe.webkitEnterFullscreen) iframe.webkitEnterFullscreen();
                 });
             }
         };
