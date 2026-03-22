@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memory 65</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
@@ -39,28 +39,27 @@
         .preview-box {
             position: relative;
             width: 100%;
-            max-width: 320px;
+            max-width: 280px; /* ปรับให้เล็กลง */
             aspect-ratio: 16 / 9;
-            margin-bottom: 40px;
-            border-radius: 16px;
+            margin-bottom: 30px;
+            border-radius: 8px; /* มินิมอลขอบมนนิดเดียว */
             overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.1);
-            background: #f9f9f9;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.08);
+            background: #fdfdfd;
         }
 
         .preview-box img { 
             width: 100%; height: 100%; 
             object-fit: cover; 
-            opacity: 0.95;
+            opacity: 0.9;
             transition: transform 1.2s ease, filter 1.2s ease;
         }
 
         .preview-scan-line {
             position: absolute;
             top: 0; left: 0;
-            width: 100%; height: 2px;
-            background: #000;
+            width: 100%; height: 1px;
+            background: rgba(0,0,0,0.2);
             z-index: 2;
             display: none;
             will-change: transform;
@@ -68,33 +67,39 @@
 
         @keyframes scanning { 
             0% { transform: translateY(0); opacity: 0; } 
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(180px); opacity: 0; } 
+            50% { opacity: 1; }
+            100% { transform: translateY(157px); opacity: 0; } 
         }
         
         .analyzing .preview-scan-line { 
             display: block; 
-            animation: scanning 1.8s linear infinite; 
+            animation: scanning 2s linear infinite; 
         }
         
         .analyzing img { 
-            transform: scale(1.08); 
-            filter: grayscale(1) contrast(1.3) brightness(0.9);
+            filter: grayscale(1) brightness(0.95);
         }
 
+        /* ปุ่มเริ่มสแกนแบบมินิมอล */
         .btn-start {
-            background: #000; color: #fff; border: none;
-            width: 85%; max-width: 260px;
-            padding: 18px 0; font-size: 1.05rem; 
-            border-radius: 50px; cursor: pointer; font-weight: 600;
+            background: transparent;
+            color: #000;
+            border: 1px solid #000;
+            width: auto;
+            min-width: 140px;
+            padding: 10px 20px;
+            font-size: 0.85rem; 
+            letter-spacing: 1px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 300;
             font-family: 'Kanit', sans-serif;
-            transition: all 0.4s ease;
+            transition: all 0.3s ease;
             white-space: nowrap;
         }
         
-        .btn-start:disabled { background: #f0f0f0; color: #ccc; cursor: not-allowed; }
-        .btn-start:active { transform: scale(0.96); }
+        .btn-start:disabled { border-color: #eee; color: #ccc; cursor: not-allowed; }
+        .btn-start:active { background: #000; color: #fff; }
 
         /* ส่วนกล้องสแกน */
         #camera-container {
@@ -109,33 +114,30 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 80vw; aspect-ratio: 16 / 10;
-            max-width: 350px;
-            border: 1.5px solid #000;
-            border-radius: 12px;
-            box-shadow: 0 0 0 2000px rgba(255,255,255,0.75);
+            width: 75vw; aspect-ratio: 16 / 10;
+            max-width: 300px;
+            border: 1px solid rgba(0,0,0,0.3);
+            border-radius: 4px;
+            box-shadow: 0 0 0 2000px rgba(255,255,255,0.85);
             z-index: 5;
-            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            transition: all 0.5s ease;
             overflow: hidden;
         }
 
         .scan-line {
             position: absolute;
             top: 0; left: 0;
-            width: 100%; height: 2px;
+            width: 100%; height: 1px;
             background: #000;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
             will-change: transform;
-            animation: scanHardware 2.5s ease-in-out infinite;
+            animation: scanHardware 3s ease-in-out infinite;
         }
 
         @keyframes scanHardware { 
-            0% { transform: translateY(20px); opacity: 0.3; } 
-            50% { transform: translateY(180px); opacity: 1; } 
-            100% { transform: translateY(20px); opacity: 0.3; } 
+            0%, 100% { transform: translateY(10px); opacity: 0.2; } 
+            50% { transform: translateY(170px); opacity: 0.8; } 
         }
 
-        /* เอฟเฟกต์ตอนสแกนติด */
         #success-flash {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -143,7 +145,7 @@
             z-index: 3000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.4s ease;
         }
 
         #play-overlay {
@@ -160,11 +162,17 @@
             transition: opacity 0.6s ease;
         }
 
-        #video-player {
+        /* YouTube Container */
+        #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none; z-index: 1500;
-            object-fit: contain; background: #000;
+            background: #000;
+        }
+        
+        #video-container iframe {
+            width: 100%; height: 100%;
+            border: none;
         }
 
         #fullscreen-hint {
@@ -172,34 +180,35 @@
             top: -100px; left: 50%;
             transform: translateX(-50%);
             background: #fff; color: #000;
-            padding: 12px 28px; border-radius: 50px;
-            font-size: 0.9rem; font-weight: 600;
+            padding: 8px 20px; border-radius: 4px;
+            font-size: 0.8rem; font-weight: 400;
             z-index: 3500; display: flex;
-            align-items: center; gap: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border: 2px solid #000;
+            align-items: center; gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #000;
             transition: top 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        #fullscreen-hint.show { top: 40px; }
+        #fullscreen-hint.show { top: 30px; }
 
         .status-msg {
             position: absolute;
-            bottom: 15%; width: 100%;
-            text-align: center; font-size: 0.85rem;
-            color: #000; letter-spacing: 1px;
+            bottom: 12%; width: 100%;
+            text-align: center; font-size: 0.8rem;
+            color: #888; letter-spacing: 1px;
+            font-weight: 300;
             z-index: 10;
         }
 
         .scan-indicator {
             position: absolute;
-            top: 15px; right: 15px;
-            width: 10px; height: 10px;
+            top: 10px; right: 10px;
+            width: 6px; height: 6px;
             border-radius: 50%;
             background: #eee;
             transition: background 0.2s;
         }
-        .scan-active { background: #000 !important; box-shadow: 0 0 12px rgba(0,0,0,0.2); }
+        .scan-active { background: #000 !important; }
     </style>
 </head>
 <body>
@@ -215,11 +224,7 @@
         <button class="btn-start" id="start-btn" disabled>กำลังรอ...</button>
     </div>
 
-    <!-- ปุ่มแนะนำเต็มจอ -->
-    <div id="fullscreen-hint">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-        ดูแบบเต็มจอ
-    </div>
+    <div id="fullscreen-hint">หมุนจอเพื่อรับชมภาพขนาดใหญ่</div>
 
     <!-- ส่วนกล้อง -->
     <div id="camera-container">
@@ -228,30 +233,30 @@
             <div class="scan-indicator" id="lock-indicator"></div>
             <div class="scan-line"></div>
         </div>
-        <div class="status-msg" id="status-display">กำลังเตรียมระบบ AI...</div>
+        <div class="status-msg" id="status-display">ส่องไปที่รูปภาพความทรงจำ</div>
     </div>
 
     <!-- หน้าจอพบความทรงจำ -->
     <div id="play-overlay">
-        <div style="width:64px;height:64px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 10px 30px rgba(0,0,0,0.1)">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+        <div style="width:50px;height:50px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <span style="font-weight:600; font-size:1.1rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
-        <span style="font-size:0.85rem; opacity:0.5; margin-top:8px">แตะเพื่อเปิดรับชม</span>
+        <span style="font-weight:400; font-size:0.95rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
+        <span style="font-size:0.75rem; opacity:0.4; margin-top:6px">แตะเพื่อเปิดรับชม</span>
     </div>
 
-    <!-- วิดีโอหลัก (ใส่ Short Link) -->
-    <video id="video-player" src="https://itl.ink/736c08a8" playsinline loop controls crossorigin="anonymous"></video>
+    <!-- Container สำหรับ YouTube (จะโหลดเมื่อสแกนติด) -->
+    <div id="video-container"></div>
 
     <script>
-        const VIDEO_URL = "https://itl.ink/736c08a8";
+        const YT_ID = "mrZVfI8QM0I";
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
         const previewContainer = document.getElementById('preview-container');
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
-        const videoPlayer = document.getElementById('video-player');
+        const videoContainer = document.getElementById('video-container');
         const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
         const statusDisplay = document.getElementById('status-display');
@@ -262,13 +267,11 @@
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        // ความเข้มงวดอัจฉริยะสูงสุด
         const THRESHOLD = 0.94; 
         const VARIANCE_THRESHOLD = 0.08; 
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 12;
 
-        // จุดไข่ปลาวิ่งในปุ่มขณะโหลด
         let dots = 0;
         const dotTimer = setInterval(() => {
             if (startBtn.disabled && startBtn.innerText.includes("กำลังรอ")) {
@@ -285,7 +288,6 @@
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
-                    
                     const h = img.shape[0], w = img.shape[1];
                     const gridH = Math.floor(h/3), gridW = Math.floor(w/3);
                     let grids = [];
@@ -301,10 +303,10 @@
                 targetFeatures = results.feat;
                 targetGridData = results.grids;
                 
-                startBtn.innerText = "เริ่มสแกนความทรงจำ";
+                startBtn.innerText = "เริ่มสแกน";
                 startBtn.disabled = false;
                 clearInterval(dotTimer);
-            } catch (e) { startBtn.innerText = "โหลดผิดพลาด"; }
+            } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
 
         startBtn.onclick = () => {
@@ -312,7 +314,6 @@
             startBtn.disabled = true;
             setTimeout(() => {
                 overlay.style.opacity = '0';
-                overlay.style.transform = 'scale(0.95)';
                 setTimeout(async () => {
                     overlay.style.display = 'none';
                     cameraContainer.style.display = 'block';
@@ -322,16 +323,14 @@
                         });
                         webcam.srcObject = stream;
                         webcam.onloadedmetadata = () => {
-                            videoPlayer.load();
                             setTimeout(() => {
                                 isReadyToAnalyze = true;
-                                statusDisplay.innerText = "จัดวางรูปถ่ายให้พอดีกรอบ";
                                 requestAnimationFrame(predict);
-                            }, 2500);
+                            }, 2000);
                         };
-                    } catch (err) { statusDisplay.innerText = "ไม่สามารถเปิดกล้องได้"; }
+                    } catch (err) { statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
                 }, 500);
-            }, 1200);
+            }, 1000);
         };
 
         async function predict() {
@@ -359,8 +358,8 @@
                     let diffSum = 0;
                     let mean = currentGrids.reduce((a, b) => a + b) / 9;
                     let variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
-
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
+                    
                     const colorMatch = (diffSum / 9) < 0.15;
                     const hasTexture = variance > VARIANCE_THRESHOLD; 
 
@@ -385,9 +384,9 @@
         function triggerSuccess() {
             isDetected = true;
             successFlash.style.opacity = '1';
-            webcam.style.filter = 'brightness(2) contrast(0.5) blur(10px)';
+            webcam.style.filter = 'blur(15px)';
             const frame = document.getElementById('scan-frame');
-            frame.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            frame.style.transform = 'translate(-50%, -50%) scale(0.8)';
             frame.style.opacity = '0';
 
             setTimeout(() => {
@@ -395,7 +394,6 @@
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
                 
-                videoPlayer.style.display = 'block';
                 playOverlay.style.display = 'flex';
                 setTimeout(() => playOverlay.style.opacity = '1', 50);
             }, 400);
@@ -406,26 +404,15 @@
             setTimeout(() => {
                 playOverlay.style.display = 'none';
                 
-                // ระบบอัจฉริยะ: พยายามเล่นวิดีโอ 
-                // หากลิงก์เป็น Redirect (YouTube/Drive Preview) จะเกิด Error และเด้งไปหน้าเว็บนั้นทันที
-                videoPlayer.play().catch(error => {
-                    console.log("Redirecting to external link...");
-                    window.location.href = VIDEO_URL;
-                });
+                // โหลดวิดีโอ YouTube เข้าไปใน Container
+                videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${YT_ID}?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                videoContainer.style.display = 'block';
 
                 setTimeout(() => {
-                    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
-                    if (!isFS) fsHint.classList.add('show');
-                    setTimeout(() => fsHint.classList.remove('show'), 6000);
-                }, 2000);
+                    fsHint.classList.add('show');
+                    setTimeout(() => fsHint.classList.remove('show'), 5000);
+                }, 3000);
             }, 400);
-        };
-
-        fsHint.onclick = () => {
-            const el = videoPlayer;
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
-            fsHint.classList.remove('show');
         };
 
         init();
