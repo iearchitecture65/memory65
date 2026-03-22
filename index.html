@@ -65,13 +65,11 @@
             will-change: transform;
         }
 
-        /* แอนิเมชันวิ่งลงครั้งเดียว */
         @keyframes scanDownOnce { 
             0% { transform: translateY(0); opacity: 1; } 
             100% { transform: translateY(157px); opacity: 1; } 
         }
 
-        /* แอนิเมชันกระพริบ */
         @keyframes flashEffect {
             0%, 100% { opacity: 0.9; filter: grayscale(1) brightness(1); }
             50% { opacity: 0.4; filter: grayscale(1) brightness(2); }
@@ -90,7 +88,6 @@
             animation: flashEffect 0.2s infinite;
         }
 
-        /* ปุ่มเริ่มสแกนแบบมินิมอลและมนกลม */
         .btn-start {
             background: #000;
             color: #fff;
@@ -100,7 +97,7 @@
             padding: 14px 28px;
             font-size: 0.9rem; 
             letter-spacing: 1px;
-            border-radius: 100px; /* มนกลม */
+            border-radius: 100px;
             cursor: pointer;
             font-weight: 400;
             font-family: 'Kanit', sans-serif;
@@ -112,7 +109,6 @@
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
         .btn-start:active { transform: scale(0.95); }
 
-        /* ส่วนกล้องสแกน */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -173,7 +169,6 @@
             transition: opacity 0.6s ease;
         }
 
-        /* Video Player */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -262,7 +257,6 @@
     </div>
 
     <script>
-        // ไฟล์วิดีโอ Google Drive (Direct Link) - อัปเดต ID ใหม่
         const DRIVE_ID = "1myp5J_EBbO9jZJyTk-5kid2Qy5aBpRHQ";
         const VIDEO_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_ID}`;
 
@@ -284,10 +278,12 @@
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        const THRESHOLD = 0.94; 
-        const VARIANCE_THRESHOLD = 0.08; 
+        // --- ปรับจูนความพอดี (Balanced Intelligence) ---
+        const THRESHOLD = 0.88; // ลดความเข้มงวดลงเล็กน้อยเพื่อให้สแกนติดง่ายขึ้น
+        const VARIANCE_THRESHOLD = 0.07; 
+        const COLOR_MATCH_TOLERANCE = 0.22; // ผ่อนปรนค่าความเพี้ยนของสี
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 12;
+        const CONFIDENCE_REQUIRED = 8; // ใช้จำนวนเฟรมน้อยลงเพื่อให้การสแกนรวดเร็วขึ้น
 
         let dots = 0;
         const dotTimer = setInterval(() => {
@@ -327,12 +323,10 @@
         }
 
         startBtn.onclick = () => {
-            // Stage 1: เส้นวิ่งลง
             previewContainer.classList.add('analyzing');
             startBtn.disabled = true;
             
             setTimeout(() => {
-                // Stage 2: กระพริบๆ
                 previewContainer.classList.add('flashing');
                 
                 setTimeout(() => {
@@ -346,18 +340,17 @@
                             });
                             webcam.srcObject = stream;
                             webcam.onloadedmetadata = () => {
-                                // โหลดวิดีโอรอไว้
                                 videoPlayer.src = VIDEO_URL;
                                 videoPlayer.load();
                                 setTimeout(() => {
                                     isReadyToAnalyze = true;
                                     requestAnimationFrame(predict);
-                                }, 2000);
+                                }, 1500);
                             };
                         } catch (err) { statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
                     }, 500);
-                }, 1000); // กระพริบ 1 วินาที
-            }, 1200); // รอเส้นวิ่งลง 1.2 วินาที
+                }, 800); 
+            }, 1200);
         };
 
         async function predict() {
@@ -365,8 +358,10 @@
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
-                    const size = Math.min(h, w) * 0.55;
+                    // ขยายขนาดพื้นที่วิเคราะห์ (ROI) ให้กว้างขึ้นเพื่อให้ไม่ต้องจ่อรูปเป๊ะเกินไป
+                    const size = Math.min(h, w) * 0.65;
                     const startH = (h - size) / 2, startW = (w - size) / 2;
+                    
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
@@ -387,7 +382,7 @@
                     let variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
                     
-                    const colorMatch = (diffSum / 9) < 0.15;
+                    const colorMatch = (diffSum / 9) < COLOR_MATCH_TOLERANCE;
                     const hasTexture = variance > VARIANCE_THRESHOLD; 
 
                     return { sim, colorMatch, hasTexture };
@@ -401,7 +396,8 @@
                         return;
                     }
                 } else {
-                    detectionConfidence = 0;
+                    // ลดคะแนนลงทีละนิดแทนการรีเซ็ตเป็น 0 ทันที เพื่อให้การสแกนไหลลื่นขึ้นในที่แสงน้อย
+                    detectionConfidence = Math.max(0, detectionConfidence - 1);
                     lockIndicator.classList.remove('scan-active');
                 }
                 setTimeout(() => requestAnimationFrame(predict), 100);
