@@ -45,13 +45,44 @@
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.08);
             background: #fdfdfd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
+        /* รูปภาพจะถูกซ่อนไว้ก่อนจนกว่าจะโหลดเสร็จ */
         .preview-box img { 
             width: 100%; height: 100%; 
             object-fit: cover; 
-            opacity: 0.9;
-            transition: transform 1.2s ease, filter 0.5s ease;
+            opacity: 0;
+            transition: opacity 1s ease, filter 0.5s ease;
+        }
+        .preview-box img.loaded { opacity: 0.9; }
+
+        /* ตัวโหลดรูปภาพ */
+        .img-loader {
+            position: absolute;
+            width: 24px; height: 24px;
+            border: 2px solid #eee;
+            border-top: 2px solid #000;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* แอนิเมชันจุดขยับ (...) */
+        .dots-animate::after {
+            content: '';
+            animation: dotsMove 1.5s infinite;
+        }
+
+        @keyframes dotsMove {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+            100% { content: ''; }
         }
 
         .preview-scan-line {
@@ -69,23 +100,12 @@
             100% { transform: translateY(157px); opacity: 1; } 
         }
 
-        @keyframes flashEffect {
-            0%, 100% { opacity: 0.9; filter: grayscale(1) brightness(1); }
-            50% { opacity: 0.4; filter: grayscale(1) brightness(2); }
-        }
-        
         .analyzing .preview-scan-line { 
             display: block; 
             animation: scanDownOnce 1.2s forwards; 
         }
         
-        .analyzing img { 
-            filter: grayscale(1) brightness(0.95);
-        }
-
-        .flashing img {
-            animation: flashEffect 0.2s infinite;
-        }
+        .analyzing img { filter: grayscale(1) brightness(0.95); }
 
         .btn-start {
             background: #000; color: #fff; border: none;
@@ -96,8 +116,8 @@
         }
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
-        .btn-start:active { transform: scale(0.95); }
 
+        /* ส่วนกล้องสแกน */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -111,7 +131,7 @@
             transform-origin: center center;
             pointer-events: none;
         }
-        /* ลบ Controls มาตรฐานของเบราว์เซอร์บนตัวกล้อง */
+
         video::-webkit-media-controls { display:none !important; }
         video::-webkit-media-controls-enclosure { display:none !important; }
 
@@ -153,12 +173,9 @@
             z-index: 600; border: 1px solid #000; cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            animation: popIn 0.4s ease-out;
         }
-        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         #flash-btn.active { background: #000; color: #fff; }
 
-        /* ปุ่มซูมที่ปรับขนาดให้เหมาะสม */
         .zoom-controls {
             position: absolute;
             bottom: 22%; left: 50%; transform: translateX(-50%);
@@ -184,12 +201,11 @@
             pointer-events: none; transition: opacity 0.4s ease;
         }
 
-        /* Video Container - แยกส่วนอย่างเด็ดขาด */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none !important;
-            z-index: 2000;
+            z-index: 1000;
             background: #000;
         }
 
@@ -234,10 +250,11 @@
     <!-- หน้าจอเริ่มต้น -->
     <div id="overlay">
         <div class="preview-box" id="preview-container">
+            <div class="img-loader" id="img-loader"></div>
             <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
         </div>
-        <button class="btn-start" id="start-btn" disabled>กำลังรอ...</button>
+        <button class="btn-start" id="start-btn" disabled>กำลังเตรียมระบบ<span class="dots-animate"></span></button>
     </div>
 
     <!-- ส่วนกล้อง -->
@@ -248,7 +265,6 @@
 
         <video id="webcam" autoplay playsinline muted disablePictureInPicture webkit-playsinline></video>
         
-        <!-- แถบซูม: เอา 4x ออก -->
         <div class="zoom-controls" id="zoom-ui">
             <div class="zoom-btn active" data-zoom="1.0">1x</div>
             <div class="zoom-btn" data-zoom="2.0">2x</div>
@@ -260,7 +276,7 @@
         </div>
         <div class="status-msg" id="status-display">
             ส่องไปที่รูปภาพความทรงจำ
-            <span class="status-sub-msg" id="sub-status">กำลังเตรียมระบบ AI...</span>
+            <span class="status-sub-msg" id="sub-status">กำลังเริ่มต้นระบบ AI<span class="dots-animate"></span></span>
         </div>
     </div>
 
@@ -285,6 +301,7 @@
         const subStatus = document.getElementById('sub-status');
         const flashBtn = document.getElementById('flash-btn');
         const successFlash = document.getElementById('success-flash');
+        const imgLoader = document.getElementById('img-loader');
         const zoomBtns = document.querySelectorAll('.zoom-btn');
 
         let model, targetFeatures, targetGridData;
@@ -294,7 +311,6 @@
         let isFlashOn = false;
         let currentZoomLevel = 1.0;
         
-        // --- ค่าคงที่ความแม่นยำ ---
         const THRESHOLD = 0.90; 
         const COLOR_MATCH_TOLERANCE = 0.18; 
         const BRIGHTNESS_THRESHOLD = 0.22; 
@@ -304,7 +320,22 @@
 
         async function init() {
             try {
-                if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
+                // ระบบโหลดรูปภาพก่อน
+                if (!targetImg.complete) {
+                    await new Promise(r => {
+                        targetImg.onload = () => {
+                            targetImg.classList.add('loaded');
+                            imgLoader.style.display = 'none';
+                            r();
+                        };
+                        targetImg.onerror = r;
+                    });
+                } else {
+                    targetImg.classList.add('loaded');
+                    imgLoader.style.display = 'none';
+                }
+
+                // โหลด AI
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
                 const results = tf.tidy(() => {
@@ -319,7 +350,7 @@
                 targetFeatures = results.feat;
                 targetGridData = results.grids;
                 
-                startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
+                startBtn.innerHTML = 'เริ่มสัมผัสความทรงจำ';
                 startBtn.disabled = false;
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
@@ -328,49 +359,40 @@
             previewContainer.classList.add('analyzing');
             startBtn.disabled = true;
             setTimeout(() => {
-                previewContainer.classList.add('flashing');
-                setTimeout(() => {
-                    overlay.style.opacity = '0';
-                    setTimeout(async () => {
-                        overlay.style.display = 'none';
-                        cameraContainer.style.display = 'block';
-                        try {
-                            videoStream = await navigator.mediaDevices.getUserMedia({ 
-                                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                overlay.style.opacity = '0';
+                setTimeout(async () => {
+                    overlay.style.display = 'none';
+                    cameraContainer.style.display = 'block';
+                    try {
+                        videoStream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                        });
+                        webcam.srcObject = videoStream;
+                        webcam.onloadedmetadata = () => {
+                            const track = videoStream.getVideoTracks()[0];
+                            const caps = track.getCapabilities();
+                            if (caps.torch) flashBtn.style.display = 'flex';
+                            zoomBtns.forEach(btn => {
+                                btn.onclick = () => applyAdaptiveZoom(parseFloat(btn.dataset.zoom), btn);
                             });
-                            webcam.srcObject = videoStream;
-                            webcam.onloadedmetadata = () => {
-                                const track = videoStream.getVideoTracks()[0];
-                                const caps = track.getCapabilities();
-                                if (caps.torch) flashBtn.style.display = 'flex';
-                                zoomBtns.forEach(btn => {
-                                    btn.onclick = () => applyAdaptiveZoom(parseFloat(btn.dataset.zoom), btn);
-                                });
-                                setTimeout(() => {
-                                    isReadyToAnalyze = true;
-                                    requestAnimationFrame(predict);
-                                }, 2000);
-                            };
-                        } catch (err) { subStatus.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
-                    }, 500);
-                }, 800); 
+                            setTimeout(() => {
+                                isReadyToAnalyze = true;
+                                requestAnimationFrame(predict);
+                            }, 2000);
+                        };
+                    } catch (err) { subStatus.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
+                }, 500);
             }, 1200);
         };
 
-        // ระบบซูมอัจฉริยะ: ปรับทั้งภาพและค่าการวิเคราะห์ AI
         async function applyAdaptiveZoom(val, el) {
             if (!videoStream) return;
             const track = videoStream.getVideoTracks()[0];
             const caps = track.getCapabilities();
-            
             zoomBtns.forEach(b => b.classList.remove('active'));
             el.classList.add('active');
             currentZoomLevel = val;
-            
-            // 1. ปรับการแสดงผลภาพ (Digital Zoom UI)
             webcam.style.transform = `scale(${val})`;
-            
-            // 2. ปรับ Hardware เลนส์จริง (ถ้าเครื่องรองรับ)
             if (caps.zoom) {
                 try {
                     const target = Math.max(caps.zoom.min, Math.min(val, caps.zoom.max));
@@ -394,46 +416,34 @@
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
-                    
-                    // --- หัวใจหลัก: ปรับค่าการสแกนตามระดับการซูม (Adaptive ROI) ---
-                    // เมื่อซูม 2x พื้นที่ที่ AI สนใจจะลดลงเหลือเพียง 1/2 ของพื้นที่เดิม 
-                    // เพื่อให้ AI วิเคราะห์รายละเอียดในระดับพิกเซลที่ลึกขึ้น (ตามคำขอ "คูณ 2")
-                    const baseZoomFactor = 0.42;
-                    const adaptiveFactor = baseZoomFactor / currentZoomLevel; 
-                    
-                    const roiW = w * adaptiveFactor; 
+                    const zoomFactor = currentZoomLevel >= 2.0 ? 0.35 : 0.42;
+                    const roiW = w * zoomFactor; 
                     const roiH = roiW * (10/16);
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
-                    
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startY/h, startX/w, (startY+roiH)/h, (startX+roiW)/w]], [0], [224, 224]);
-                    
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
-                    
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
-                    // วิเคราะห์ Grid 3x3 บนพื้นที่ที่ซูมเข้าไปแล้ว
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) currentGrids.push(cImg.slice([i*74, j*74, 0], [74, 74, 3]).mean().div(255).dataSync()[0]);
-                    
                     const brightness = currentGrids.reduce((a, b) => a + b) / 9;
                     let diffSum = 0;
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
                     const variance = currentGrids.reduce((a, b) => a + Math.pow(b - brightness, 2)) / 9;
-
                     return { sim, colorMatch: (diffSum / 9) < COLOR_MATCH_TOLERANCE, hasTexture: variance > VARIANCE_THRESHOLD, brightness };
                 });
 
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
-                    subStatus.innerText = "สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง";
+                    subStatus.innerHTML = 'สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง<span class="dots-animate"></span>';
                     subStatus.style.color = "#ff3b30";
                     if (flashBtn.style.display !== 'flex') flashBtn.style.display = 'flex';
                 } else {
                     subStatus.style.color = "#000";
-                    if (!check.hasTexture) subStatus.innerText = "กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน";
-                    else if (check.sim < 0.7) subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
-                    else if (check.sim < THRESHOLD) subStatus.innerText = "เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่";
-                    else subStatus.innerText = "กำลังวิเคราะห์ความทรงจำ...";
+                    if (!check.hasTexture) subStatus.innerHTML = 'กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน<span class="dots-animate"></span>';
+                    else if (check.sim < 0.7) subStatus.innerHTML = 'ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ<span class="dots-animate"></span>';
+                    else if (check.sim < THRESHOLD) subStatus.innerHTML = 'เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่<span class="dots-animate"></span>';
+                    else subStatus.innerHTML = 'กำลังวิเคราะห์ความทรงจำ<span class="dots-animate"></span>';
                 }
 
                 if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
@@ -461,15 +471,8 @@
                 if (videoStream) videoStream.getTracks().forEach(t => t.stop());
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
-                
                 videoContainer.classList.add('active');
-                
-                iframeTarget.innerHTML = `
-                    <iframe 
-                        src="${PREVIEW_URL}" 
-                        allow="autoplay; fullscreen" 
-                        allowfullscreen>
-                    </iframe>`;
+                iframeTarget.innerHTML = `<iframe src="${PREVIEW_URL}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
             }, 400);
         }
 
