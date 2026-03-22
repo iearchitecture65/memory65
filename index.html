@@ -240,10 +240,11 @@
         <span style="font-size:0.85rem; opacity:0.5; margin-top:8px">แตะเพื่อเปิดรับชม</span>
     </div>
 
-    <!-- วิดีโอจากลิงก์ Google Drive -->
-    <video id="video-player" src="https://drive.google.com/uc?id=1K6XKIMPY8ZB4O5oECe9Qg3k6urdiXyrT" playsinline loop controls crossorigin="anonymous"></video>
+    <!-- วิดีโอหลัก (ใส่ Short Link) -->
+    <video id="video-player" src="https://itl.ink/736c08a8" playsinline loop controls crossorigin="anonymous"></video>
 
     <script>
+        const VIDEO_URL = "https://itl.ink/736c08a8";
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
@@ -261,9 +262,9 @@
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        // ความเข้มงวดอัจฉริยะ (Extreme Threshold)
+        // ความเข้มงวดอัจฉริยะสูงสุด
         const THRESHOLD = 0.94; 
-        const VARIANCE_THRESHOLD = 0.08; // กรองวัตถุผิวเรียบสีเดียว (เช่น รีโมท)
+        const VARIANCE_THRESHOLD = 0.08; 
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 12;
 
@@ -281,7 +282,6 @@
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
-                // วิเคราะห์รูปถ่ายต้นฉบับ (AI + 3x3 Color Grid)
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
@@ -341,14 +341,11 @@
                     const [h, w] = full.shape;
                     const size = Math.min(h, w) * 0.55;
                     const startH = (h - size) / 2, startW = (w - size) / 2;
-                    
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
-                    // 1. ตรวจสอบ MobileNet Similarity
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
 
-                    // 2. ตรวจสอบ Color Variance & Grid (ป้องกันรีโมท/วัตถุสีเรียบ)
                     const gridSide = 74; 
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
@@ -387,7 +384,6 @@
 
         function triggerSuccess() {
             isDetected = true;
-            // เอฟเฟกต์แสงวาบและความนุ่มนวล
             successFlash.style.opacity = '1';
             webcam.style.filter = 'brightness(2) contrast(0.5) blur(10px)';
             const frame = document.getElementById('scan-frame');
@@ -409,7 +405,14 @@
             playOverlay.style.opacity = '0';
             setTimeout(() => {
                 playOverlay.style.display = 'none';
-                videoPlayer.play();
+                
+                // ระบบอัจฉริยะ: พยายามเล่นวิดีโอ 
+                // หากลิงก์เป็น Redirect (YouTube/Drive Preview) จะเกิด Error และเด้งไปหน้าเว็บนั้นทันที
+                videoPlayer.play().catch(error => {
+                    console.log("Redirecting to external link...");
+                    window.location.href = VIDEO_URL;
+                });
+
                 setTimeout(() => {
                     const isFS = document.fullscreenElement || document.webkitFullscreenElement;
                     if (!isFS) fsHint.classList.add('show');
