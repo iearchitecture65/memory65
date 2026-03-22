@@ -370,23 +370,24 @@
                                 video: { 
                                     facingMode: "environment", 
                                     width: { ideal: 1280 }, 
-                                    height: { ideal: 720 },
-                                    // ขอซูมเบื้องต้น
-                                    zoom: 2.0
+                                    height: { ideal: 720 }
                                 } 
                             });
                             webcam.srcObject = videoStream;
                             webcam.onloadedmetadata = () => {
-                                // พยายามสั่งซูมเลนส์กล้องจริง (สำหรับเครื่องที่รองรับ)
                                 const track = videoStream.getVideoTracks()[0];
                                 const capabilities = track.getCapabilities();
+
+                                // พยายามสั่งซูม และแสดงปุ่มแฟลชถ้าเครื่องรายงานว่ามี torch
                                 if (capabilities.zoom) {
                                     track.applyConstraints({
                                         advanced: [{ zoom: Math.min(capabilities.zoom.max, 2.0) }]
                                     }).catch(() => {});
                                 }
 
-                                if (capabilities.torch) flashBtn.style.display = 'flex';
+                                if (capabilities.torch) {
+                                    flashBtn.style.display = 'flex';
+                                }
 
                                 setTimeout(() => {
                                     isReadyToAnalyze = true;
@@ -399,14 +400,23 @@
             }, 1200);
         };
 
+        // ปรับปรุงฟังก์ชันแฟลชให้เสถียรขึ้น
         flashBtn.onclick = async () => {
             if (!videoStream) return;
             const track = videoStream.getVideoTracks()[0];
             try {
                 isFlashOn = !isFlashOn;
-                await track.applyConstraints({ advanced: [{ torch: isFlashOn }] });
+                // ส่งคำสั่งผ่าน applyConstraints ในรูปแบบอาเรย์ advanced
+                await track.applyConstraints({
+                    advanced: [{ torch: isFlashOn }]
+                });
                 flashBtn.classList.toggle('active', isFlashOn);
-            } catch (e) { console.warn("Flash not supported."); }
+            } catch (e) { 
+                console.error("Flash error:", e);
+                // หากล้มเหลว ให้ลองรีเซ็ตสถานะปุ่ม
+                isFlashOn = false;
+                flashBtn.classList.remove('active');
+            }
         };
 
         async function predict() {
@@ -415,8 +425,7 @@
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
                     
-                    // ปรับ ROI ให้เจาะจงจุดกึ่งกลางมากขึ้น (จำลอง Digital Zoom สำหรับ AI)
-                    const roiW = w * 0.42; // บีบพื้นที่วิเคราะห์ให้แคบลงเพื่อความแม่นยำของการซูม
+                    const roiW = w * 0.42; 
                     const roiH = roiW * (10/16);
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
@@ -445,6 +454,7 @@
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
                     subStatus.innerText = "สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง";
                     subStatus.style.color = "#ff3b30";
+                    // แสดงปุ่มแฟลชทันทีเมื่อมืด
                     if (flashBtn.style.display !== 'flex') flashBtn.style.display = 'flex';
                 } else {
                     subStatus.style.color = "#000";
