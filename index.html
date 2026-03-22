@@ -21,7 +21,8 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        #overlay {
+        /* Loading & Lock Screen */
+        #overlay, #lock-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: #fff;
@@ -30,9 +31,11 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            transition: opacity 0.5s ease, transform 0.5s ease;
             padding: 20px;
+            text-align: center;
         }
+
+        #lock-screen { display: none; z-index: 1100; }
 
         .preview-box {
             position: relative;
@@ -44,64 +47,40 @@
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.1);
             background: #f9f9f9;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        .preview-box img { 
-            width: 100%; height: 100%; 
-            object-fit: cover; 
-            opacity: 0.9;
-            transition: transform 0.8s ease, filter 0.8s ease;
-        }
+        .preview-box img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
 
         .preview-scan-line {
             position: absolute;
             top: -100%; left: 0;
             width: 100%; height: 100%;
-            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.2), transparent);
+            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.1), transparent);
             border-bottom: 2px solid #000;
             z-index: 2;
             display: none;
         }
 
-        @keyframes scanning {
-            0% { top: -100%; }
-            100% { top: 100%; }
-        }
+        @keyframes scanning { 0% { top: -100%; } 100% { top: 100%; } }
 
-        .analyzing .preview-scan-line {
-            display: block;
-            animation: scanning 1.5s linear infinite;
-        }
-        .analyzing img {
-            transform: scale(1.1);
-            filter: grayscale(1) contrast(1.2);
-        }
+        .analyzing .preview-scan-line { display: block; animation: scanning 1.5s linear infinite; }
 
-        .btn-start {
+        .btn-start, .btn-admin {
             background: #000; color: #fff; border: none;
-            width: 90%;
-            max-width: 280px;
-            padding: 16px 0; 
-            font-size: 1.05rem; 
-            border-radius: 50px; 
-            cursor: pointer; 
-            font-weight: 600;
+            width: 90%; max-width: 280px;
+            padding: 16px 0; font-size: 1rem; 
+            border-radius: 50px; cursor: pointer; font-weight: 600;
             font-family: 'Kanit', sans-serif;
-            white-space: nowrap;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
         }
         
         .btn-start:disabled { background: #eee; color: #aaa; cursor: wait; }
-        .btn-start:active { transform: scale(0.95); }
 
+        /* Camera UI */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            display: none;
-            background: #fff;
+            display: none; background: #fff;
         }
 
         #webcam { width: 100%; height: 100%; object-fit: cover; }
@@ -110,8 +89,7 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 80vw; 
-            aspect-ratio: 16 / 10;
+            width: 80vw; aspect-ratio: 16 / 10;
             max-width: 340px;
             border: 2px solid #000;
             border-radius: 12px;
@@ -123,7 +101,6 @@
             position: absolute;
             top: 0; width: 100%; height: 2px;
             background: #000;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
             animation: scan 2.5s ease-in-out infinite;
         }
 
@@ -138,69 +115,68 @@
             justify-content: center;
             align-items: center;
             z-index: 2000;
-            cursor: pointer;
-            color: #000;
-            padding: 20px;
         }
 
         #video-player {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            display: none;
-            z-index: 1500;
-            object-fit: contain;
-            background: #000;
+            display: none; z-index: 1500;
+            object-fit: contain; background: #000;
         }
 
         #fullscreen-hint {
             position: fixed;
-            top: -100px;
-            left: 50%;
+            top: -100px; left: 50%;
             transform: translateX(-50%);
-            background: #fff;
-            color: #000;
-            padding: 10px 24px;
-            border-radius: 40px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            z-index: 3000;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            background: #fff; color: #000;
+            padding: 10px 24px; border-radius: 40px;
+            font-size: 0.9rem; font-weight: 600;
+            z-index: 3000; display: flex;
+            align-items: center; gap: 8px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.4);
             border: 1.5px solid #000;
-            cursor: pointer;
-            white-space: nowrap;
             transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         #fullscreen-hint.show { top: 30px; }
 
-        .status-msg {
-            position: absolute;
-            bottom: 15%;
-            width: 100%;
-            text-align: center;
-            font-size: 0.85rem;
-            color: #000;
-            letter-spacing: 0.5px;
-            z-index: 10;
-            white-space: nowrap;
+        /* Admin Panel Styles */
+        #admin-panel {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; z-index: 5000;
+            padding: 40px 20px; overflow-y: auto;
+            display: none;
         }
+
+        .admin-input {
+            width: 100%; padding: 12px; margin-bottom: 20px;
+            border: 1px solid #ddd; border-radius: 8px;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        textarea.admin-input { height: 120px; resize: none; }
+
+        .welcome-msg { white-space: pre-wrap; margin-bottom: 20px; line-height: 1.6; }
 
         .scan-indicator {
             position: absolute;
             top: 10px; right: 10px;
-            width: 10px; height: 10px;
+            width: 8px; height: 8px;
             border-radius: 50%;
             background: #eee;
-            transition: background 0.2s;
         }
-        .scan-active { background: #000 !important; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        .scan-active { background: #000 !important; }
     </style>
 </head>
 <body>
 
+    <!-- หน้าจอล็อก (เวลาเปิดเครื่อง) -->
+    <div id="lock-screen">
+        <div class="welcome-msg" id="display-msg">กรุณารอสักครู่</div>
+    </div>
+
+    <!-- หน้าจอหลัก -->
     <div id="overlay">
         <div class="preview-box" id="preview-container">
             <div class="preview-scan-line"></div>
@@ -209,8 +185,26 @@
         <button class="btn-start" id="start-btn" disabled>กำลังรอ</button>
     </div>
 
+    <!-- ระบบแอดมิน -->
+    <div id="admin-panel">
+        <h2 style="margin-top:0">ตั้งค่าระบบ</h2>
+        <label>รหัสผ่านเข้าหน้าแอดมิน</label>
+        <input type="password" id="admin-pw" class="admin-input" placeholder="ใส่รหัสเพื่อเริ่มตั้งค่า">
+        
+        <div id="admin-controls" style="display:none">
+            <label>วันเวลาที่เปิดให้ใช้งาน (YYYY-MM-DD HH:mm)</label>
+            <input type="datetime-local" id="set-time" class="admin-input">
+            
+            <label>ข้อความหน้าเว็บ (หลายบรรทัดได้)</label>
+            <textarea id="set-msg" class="admin-input" placeholder="พิมพ์ข้อความที่ต้องการ..."></textarea>
+            
+            <button class="btn-admin" onclick="saveAdminSettings()">บันทึกการตั้งค่า</button>
+            <button class="btn-admin" style="background:#eee; color:#000; margin-top:10px" onclick="location.href=location.pathname">ออกจากหน้าแอดมิน</button>
+        </div>
+    </div>
+
     <div id="fullscreen-hint">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5v3m13-3h3v3m0 12h-3v3m-13-3H5v3"/></svg>
         ดูแบบเต็มจอ
     </div>
 
@@ -220,14 +214,14 @@
             <div class="scan-indicator" id="lock-indicator"></div>
             <div class="scan-line"></div>
         </div>
-        <div class="status-msg" id="status-display">กำลังเตรียมเลนส์...</div>
+        <div style="position:absolute; bottom:15%; width:100%; text-align:center; font-size:0.85rem;" id="status-display">กำลังเตรียมเลนส์...</div>
     </div>
 
     <div id="play-overlay">
         <div style="width:56px;height:56px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <span style="letter-spacing:0.5px; font-size:1rem; font-weight:600; white-space:nowrap;">พบความทรงจำแล้ว</span>
+        <span style="font-weight:600">พบความทรงจำแล้ว</span>
     </div>
 
     <video id="video-player" src="Video.mp4" playsinline loop controls></video>
@@ -236,187 +230,170 @@
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
-        const previewContainer = document.getElementById('preview-container');
-        const cameraContainer = document.getElementById('camera-container');
+        const lockScreen = document.getElementById('lock-screen');
+        const adminPanel = document.getElementById('admin-panel');
+        const displayMsg = document.getElementById('display-msg');
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
         const playOverlay = document.getElementById('play-overlay');
-        const fsHint = document.getElementById('fullscreen-hint');
-        const statusDisplay = document.getElementById('status-display');
         const lockIndicator = document.getElementById('lock-indicator');
 
-        let model, targetFeatures, targetColorProfile;
+        let model, targetFeatures, targetColorGrid;
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        // เพิ่มความเข้มงวดเป็น 0.90 เพื่อให้สแกนติดเฉพาะรูปเป้าหมายจริงๆ
-        const THRESHOLD = 0.90; 
-        const COLOR_DIFF_THRESHOLD = 0.15; // ค่าความแตกต่างของสีที่ยอมรับได้
+        // ความเข้มงวดสูงสุด: AI ต้องแม่น 0.93 และสีต้องตรง 4 จุด
+        const THRESHOLD = 0.93; 
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 20;
+        const CONFIDENCE_REQUIRED = 15;
+
+        // 1. ระบบจุดไข่ปลาวิ่งในปุ่ม
+        let dots = 0;
+        const dotTimer = setInterval(() => {
+            if (startBtn.disabled && startBtn.innerText.startsWith("กำลังรอ")) {
+                dots = (dots + 1) % 4;
+                startBtn.innerText = "กำลังรอ" + ".".repeat(dots);
+            }
+        }, 500);
 
         async function init() {
+            checkAccess();
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
-                // 1. วิเคราะห์ MobileNet Features
-                const targetTensor = tf.tidy(() => {
+                // สกัด Feature และ Color Grid (ตรวจสอบ 4 มุมของรูปเพื่อให้รีโมทหลอกไม่ได้)
+                const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
-                    return tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1);
+                    const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
+                    
+                    // วิเคราะห์สี 4 ส่วน (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+                    const h = img.shape[0], w = img.shape[1];
+                    const qH = Math.floor(h/2), qW = Math.floor(w/2);
+                    const grids = [
+                        img.slice([0,0,0],[qH,qW,3]).mean().div(255).dataSync()[0],
+                        img.slice([0,qW,0],[qH,qW,3]).mean().div(255).dataSync()[0],
+                        img.slice([qH,0,0],[qH,qW,3]).mean().div(255).dataSync()[0],
+                        img.slice([qH,qW,0],[qH,qW,3]).mean().div(255).dataSync()[0]
+                    ];
+                    return { feat, grids };
                 });
-                targetFeatures = model.infer(targetTensor, true);
                 
-                // 2. วิเคราะห์ Color Profile (Average RGB) เพื่อใช้แยกแยะวัตถุที่มีสีเดียว (เช่น รีโมทดำ)
-                targetColorProfile = tf.tidy(() => {
-                    const img = tf.browser.fromPixels(targetImg).toFloat();
-                    return img.mean([0, 1]).div(255).dataSync(); // [R, G, B] ในสเกล 0-1
-                });
-
-                targetTensor.dispose();
+                targetFeatures = results.feat;
+                targetColorGrid = results.grids;
                 
                 startBtn.innerText = "เริ่มสแกนความทรงจำ";
                 startBtn.disabled = false;
-            } catch (e) { startBtn.innerText = "โหลดไม่สำเร็จ"; }
+                clearInterval(dotTimer);
+            } catch (e) { startBtn.innerText = "โหลดผิดพลาด"; }
         }
 
-        startBtn.onclick = () => {
-            previewContainer.classList.add('analyzing');
-            startBtn.innerText = "กำลังวิเคราะห์โครงสร้าง...";
-            startBtn.disabled = true;
+        // 2. ระบบ Admin
+        const isAdminMode = new URLSearchParams(window.location.search).has('admin');
+        if (isAdminMode) {
+            adminPanel.style.display = 'block';
+            document.getElementById('admin-pw').oninput = (e) => {
+                if (e.target.value === 'Admin123') {
+                    document.getElementById('admin-controls').style.display = 'block';
+                    e.target.style.display = 'none';
+                    // โหลดข้อมูลเก่า
+                    document.getElementById('set-time').value = localStorage.getItem('openAt') || '';
+                    document.getElementById('set-msg').value = localStorage.getItem('welcomeMsg') || '';
+                }
+            };
+        }
 
+        function saveAdminSettings() {
+            localStorage.setItem('openAt', document.getElementById('set-time').value);
+            localStorage.setItem('welcomeMsg', document.getElementById('set-msg').value);
+            alert("บันทึกสำเร็จ!");
+            location.href = location.pathname;
+        }
+
+        function checkAccess() {
+            const openAt = localStorage.getItem('openAt');
+            const welcomeMsg = localStorage.getItem('welcomeMsg') || "ยังไม่ถึงเวลาเปิดใช้งาน";
+            
+            if (openAt) {
+                const targetDate = new Date(openAt).getTime();
+                const now = Date.now();
+                if (now < targetDate) {
+                    lockScreen.style.display = 'flex';
+                    displayMsg.innerText = welcomeMsg;
+                }
+            }
+        }
+
+        // 3. ระบบสแกนขั้นสูง
+        startBtn.onclick = () => {
+            document.getElementById('preview-container').classList.add('analyzing');
+            startBtn.disabled = true;
             setTimeout(() => {
                 overlay.style.opacity = '0';
-                overlay.style.transform = 'scale(1.1)';
-                
                 setTimeout(async () => {
                     overlay.style.display = 'none';
-                    cameraContainer.style.display = 'block';
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { 
-                                facingMode: "environment", 
-                                width: { ideal: 1280 }, 
-                                height: { ideal: 720 },
-                                zoom: 1.2
-                            }, 
-                            audio: false 
-                        });
-                        
-                        webcam.srcObject = stream;
-                        
-                        const track = stream.getVideoTracks()[0];
-                        const capabilities = track.getCapabilities();
-                        
-                        if (capabilities.zoom) {
-                            track.applyConstraints({
-                                advanced: [{ zoom: Math.min(capabilities.zoom.max, 1.3) }]
-                            }).catch(() => {});
-                        }
-                        
-                        webcam.onloadedmetadata = () => {
-                            videoPlayer.load();
-                            setTimeout(() => {
-                                isReadyToAnalyze = true;
-                                statusDisplay.innerText = "วางรูปถ่ายให้พอดีกับกรอบ";
-                                requestAnimationFrame(predict);
-                            }, 3000);
-                        };
-                    } catch (err) {
-                        statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้";
-                    }
+                    document.getElementById('camera-container').style.display = 'block';
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    webcam.srcObject = stream;
+                    webcam.onloadedmetadata = () => {
+                        setTimeout(() => { isReadyToAnalyze = true; requestAnimationFrame(predict); }, 2500);
+                    };
                 }, 500);
             }, 1200);
         };
 
         async function predict() {
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4) {
-                const results = tf.tidy(() => {
-                    const fullImg = tf.browser.fromPixels(webcam);
-                    const [h, w] = fullImg.shape;
+                const result = tf.tidy(() => {
+                    const full = tf.browser.fromPixels(webcam);
+                    const [h, w] = full.shape;
+                    const size = Math.min(h, w) * 0.55;
+                    const startH = (h - size) / 2, startW = (w - size) / 2;
                     
-                    const size = Math.min(h, w) * 0.5;
-                    const startH = (h - size) / 2;
-                    const startW = (w - size) / 2;
+                    const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
-                    const cropped = tf.image.cropAndResize(
-                        fullImg.expandDims(0).toFloat(),
-                        [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]],
-                        [0],
-                        [224, 224]
-                    );
-
-                    // ตรวจสอบลักษณะเด่น (AI Score)
+                    // ตรวจ AI Feature
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
-                    const a = tf.div(targetFeatures, tf.norm(targetFeatures));
-                    const b = tf.div(feat, tf.norm(feat));
-                    const aiScore = tf.sum(tf.mul(a, b)).dataSync()[0];
+                    const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
 
-                    // ตรวจสอบโทนสี (Color Score)
-                    const currentColor = cropped.mean([1, 2]).div(255).dataSync();
-                    const colorDiff = Math.sqrt(
-                        Math.pow(currentColor[0] - targetColorProfile[0], 2) +
-                        Math.pow(currentColor[1] - targetColorProfile[1], 2) +
-                        Math.pow(currentColor[2] - targetColorProfile[2], 2)
-                    );
+                    // ตรวจ Color Grid (รีโมทจะมีสีดำเกือบทั้งอัน แต่รูปจะมีสีต่างกันใน 4 ส่วน)
+                    const q = 112;
+                    const cImg = cropped.squeeze();
+                    const currentGrids = [
+                        cImg.slice([0,0,0],[q,q,3]).mean().div(255).dataSync()[0],
+                        cImg.slice([0,q,0],[q,q,3]).mean().div(255).dataSync()[0],
+                        cImg.slice([q,0,0],[q,q,3]).mean().div(255).dataSync()[0],
+                        cImg.slice([q,q,0],[q,q,3]).mean().div(255).dataSync()[0]
+                    ];
+                    
+                    let gridMatch = true;
+                    for(let i=0; i<4; i++) {
+                        if (Math.abs(currentGrids[i] - targetColorGrid[i]) > 0.18) gridMatch = false;
+                    }
 
-                    return { aiScore, colorDiff };
+                    return { sim, gridMatch };
                 });
 
-                // ต้องผ่านทั้ง AI Score (โครงสร้างรูป) และ Color Check (โทนสีต้องไม่เพี้ยน)
-                if (results.aiScore > THRESHOLD && results.colorDiff < COLOR_DIFF_THRESHOLD) {
+                if (result.sim > THRESHOLD && result.gridMatch) {
                     detectionConfidence++;
                     lockIndicator.classList.add('scan-active');
-                    
                     if (detectionConfidence >= CONFIDENCE_REQUIRED) {
                         isDetected = true;
-                        if (webcam.srcObject) {
-                            webcam.srcObject.getTracks().forEach(t => t.stop());
-                        }
-                        cameraContainer.style.display = 'none';
+                        webcam.srcObject.getTracks().forEach(t => t.stop());
+                        document.getElementById('camera-container').style.display = 'none';
                         videoPlayer.style.display = 'block';
                         playOverlay.style.display = 'flex';
                         return;
                     }
                 } else {
-                    // รีเซ็ตทันทีถ้าไม่ตรง เพื่อป้องกันวัตถุอื่นหลอก
                     detectionConfidence = 0;
                     lockIndicator.classList.remove('scan-active');
                 }
-                
-                setTimeout(() => requestAnimationFrame(predict), 80);
-            } else if (!isDetected) {
-                requestAnimationFrame(predict);
-            }
+                setTimeout(() => requestAnimationFrame(predict), 100);
+            } else if (!isDetected) requestAnimationFrame(predict);
         }
 
-        playOverlay.onclick = () => {
-            playOverlay.style.display = 'none';
-            videoPlayer.play();
-
-            setTimeout(() => {
-                const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
-                if (!isFS) {
-                    fsHint.classList.add('show');
-                    setTimeout(() => fsHint.classList.remove('show'), 6000);
-                }
-            }, 2000);
-        };
-
-        fsHint.onclick = () => {
-            const el = videoPlayer;
-            if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
-            else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-            fsHint.classList.remove('show');
-        };
-
-        const onFSChange = () => {
-            const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
-            if (isFS) fsHint.classList.remove('show');
-        };
-        document.addEventListener('fullscreenchange', onFSChange);
-        document.addEventListener('webkitfullscreenchange', onFSChange);
+        playOverlay.onclick = () => { playOverlay.style.display = 'none'; videoPlayer.play(); };
 
         init();
     </script>
