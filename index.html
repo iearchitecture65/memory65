@@ -66,7 +66,7 @@
             width: 100%;
             max-width: 280px;
             aspect-ratio: 16 / 9;
-            margin-bottom: 30px;
+            margin-bottom: 70px; 
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.08);
@@ -74,33 +74,32 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            transform-origin: center center;
         }
 
-        /* รูปภาพปกติ (สี) */
         .preview-box img { 
             width: 100%; height: 100%; 
             object-fit: cover; 
             opacity: 0;
             transition: opacity 1s ease;
-            transform-origin: center center;
         }
         .preview-box img.loaded { opacity: 0.9; }
 
-        /* รูปภาพขาวดำที่จะค่อยๆ ปรากฏทับ (Progressive Grayscale) */
+        /* Grayscale overlay for progressive reveal */
         .grayscale-overlay {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
             object-fit: cover;
             filter: grayscale(1);
-            clip-path: inset(0 0 100% 0); /* เริ่มจากซ่อนไว้ด้านบน */
+            clip-path: inset(0 0 100% 0);
             z-index: 1;
             opacity: 0;
             transition: opacity 1s ease;
         }
         .preview-box img.loaded + .grayscale-overlay { opacity: 1; }
 
-        /* แอนิเมชันจุดขยับ (...) */
+        /* Dot animation (...) */
         .dots::after {
             content: '';
             animation: dotCycle 1.5s steps(1) infinite;
@@ -113,21 +112,33 @@
             75% { content: '...'; }
         }
 
-        /* แอนิเมชันหลักเมื่อเริ่มสแกน */
-        .start-animating .grayscale-overlay {
-            animation: revealBW 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
-        /* แอนิเมชันกระพริบ 1 ครั้งและขยาย หลังจากสแกนจบ (เริ่มที่วินาทีที่ 1.5) */
-        @keyframes singleFlashAndZoom {
-            0% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            15% { filter: brightness(2.5); transform: scale(1.05); opacity: 1; }
-            30% { filter: brightness(1); transform: scale(1.08); opacity: 1; }
+        /* --- ลำดับแอนิเมชันใหม่ (รวมเวลา 3.2 วินาที) --- */
+        @keyframes complexTransition {
+            /* 0s - 1.5s: ช่วงสแกน (47% ของเวลาทั้งหมด) */
+            0%, 47% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            
+            /* 1.5s - 2.0s: หน่วงเวลา 0.5 วิ (47% - 63%) */
+            63% { filter: brightness(1); transform: scale(1); }
+            
+            /* 2.0s - 2.2s: กระพริบ 1 ที (63% - 69%) */
+            66% { filter: brightness(3); transform: scale(1.02); }
+            69% { filter: brightness(1); transform: scale(1); }
+            
+            /* 2.2s - 2.7s: หน่วงเวลา 0.5 วิ (69% - 84%) */
+            84% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            
+            /* 2.7s - 3.2s: ซูมนิดเดียวแล้วจางหาย (84% - 100%) */
             100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; }
         }
 
         .start-animating .preview-box {
-            animation: singleFlashAndZoom 1s 1.5s ease-out forwards;
+            /* แอนิเมชันหลักคุม Brightness และ Scale ของทั้งกล่อง */
+            animation: complexTransition 3.2s ease-in-out forwards;
+        }
+
+        .start-animating .grayscale-overlay {
+            /* วิ่งไล่ขาวดำให้จบใน 1.5 วินาทีแรก */
+            animation: revealBW 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         @keyframes revealBW {
@@ -135,7 +146,6 @@
             to { clip-path: inset(0 0 0 0); }
         }
 
-        /* เส้นสแกนตอนเปลี่ยนหน้า - วิ่งถึงพื้นใน 1.5 วินาที พร้อมภาพขาวดำ */
         .preview-scan-line {
             position: absolute;
             top: 0; left: 0;
@@ -178,7 +188,7 @@
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
 
-        /* Camera Scanner Section */
+        /* Camera Scanner View */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -264,7 +274,7 @@
         
         #video-container iframe { width: 100%; height: 100%; border: 0; }
 
-        /* Centered Status Messages */
+        /* Centered Status Message */
         .status-msg {
             position: absolute;
             bottom: 12%; width: 100%;
@@ -311,7 +321,6 @@
             <div class="img-loader" id="img-loader"></div>
             <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
-            <!-- ภาพขาวดำสำหรับการไล่สี -->
             <img class="grayscale-overlay" src="memory-picture.JPG">
         </div>
         <button class="btn-start" id="start-btn" disabled>
@@ -424,11 +433,16 @@
         }
 
         startBtn.onclick = () => {
-            // เริ่มแอนิเมชันลำดับขั้น (สแกนพร้อมขาวดำ -> กระพริบ 1 ครั้ง)
-            previewContainer.classList.add('start-animating');
+            // เริ่มแอนิเมชันลำดับขั้นตามคำขอ
+            // 1. สแกนพร้อมขาวดำ (1.5s)
+            // 2. หน่วง (0.5s)
+            // 3. กระพริบ 1 ที (0.2s)
+            // 4. หน่วง (0.5s)
+            // 5. ซูม/จาง (0.5s)
+            // รวมเวลาประมาณ 3.2 วินาที
+            overlay.classList.add('start-animating');
             startBtn.disabled = true;
             
-            // หน่วงเวลา 2.5 วินาที (สแกน 1.5s + กระพริบ/ขยาย 1s)
             setTimeout(() => {
                 overlay.style.opacity = '0';
                 setTimeout(async () => {
@@ -450,7 +464,7 @@
                         };
                     } catch (err) { updateStatus('ไม่สามารถเข้าถึงกล้องได้', '#ff3b30'); }
                 }, 500);
-            }, 2500);
+            }, 3200); // หน่วงเวลาให้แอนิเมชันเล่นครบถ้วน
         };
 
         async function applyAdaptiveZoom(val, el) {
