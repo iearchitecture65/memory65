@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Lens</title>
+    <title>Memory Lens AI</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
@@ -21,8 +21,8 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Loading & Lock Screen */
-        #overlay, #lock-screen {
+        /* หน้าจอเริ่มต้น */
+        #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: #fff;
@@ -33,23 +33,28 @@
             z-index: 1000;
             padding: 20px;
             text-align: center;
+            transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
         }
-
-        #lock-screen { display: none; z-index: 1100; }
 
         .preview-box {
             position: relative;
             width: 100%;
             max-width: 320px;
             aspect-ratio: 16 / 9;
-            margin-bottom: 30px;
-            border-radius: 12px;
+            margin-bottom: 40px;
+            border-radius: 16px;
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.1);
             background: #f9f9f9;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
         }
 
-        .preview-box img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+        .preview-box img { 
+            width: 100%; height: 100%; 
+            object-fit: cover; 
+            opacity: 0.95;
+            transition: transform 1.2s ease;
+        }
 
         .preview-scan-line {
             position: absolute;
@@ -62,49 +67,63 @@
         }
 
         @keyframes scanning { 0% { top: -100%; } 100% { top: 100%; } }
+        .analyzing .preview-scan-line { display: block; animation: scanning 1.8s linear infinite; }
+        .analyzing img { transform: scale(1.05); }
 
-        .analyzing .preview-scan-line { display: block; animation: scanning 1.5s linear infinite; }
-
-        .btn-start, .btn-admin {
+        .btn-start {
             background: #000; color: #fff; border: none;
-            width: 90%; max-width: 280px;
-            padding: 16px 0; font-size: 1rem; 
+            width: 85%; max-width: 260px;
+            padding: 18px 0; font-size: 1.05rem; 
             border-radius: 50px; cursor: pointer; font-weight: 600;
             font-family: 'Kanit', sans-serif;
-            transition: all 0.3s ease;
+            transition: all 0.4s ease;
+            white-space: nowrap;
         }
         
-        .btn-start:disabled { background: #eee; color: #aaa; cursor: wait; }
+        .btn-start:disabled { background: #f0f0f0; color: #ccc; cursor: not-allowed; }
+        .btn-start:active { transform: scale(0.96); }
 
-        /* Camera UI */
+        /* ส่วนกล้องสแกน */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none; background: #fff;
         }
 
-        #webcam { width: 100%; height: 100%; object-fit: cover; }
+        #webcam { width: 100%; height: 100%; object-fit: cover; transition: filter 0.5s ease; }
 
         .scan-frame {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             width: 80vw; aspect-ratio: 16 / 10;
-            max-width: 340px;
-            border: 2px solid #000;
+            max-width: 350px;
+            border: 1.5px solid #000;
             border-radius: 12px;
-            box-shadow: 0 0 0 2000px rgba(255,255,255,0.7);
+            box-shadow: 0 0 0 2000px rgba(255,255,255,0.75);
             z-index: 5;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
         .scan-line {
             position: absolute;
             top: 0; width: 100%; height: 2px;
             background: #000;
-            animation: scan 2.5s ease-in-out infinite;
+            animation: scan 2.8s ease-in-out infinite;
         }
 
-        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+        @keyframes scan { 0%, 100% { top: 10%; opacity: 0.2; } 50% { top: 90%; opacity: 1; } }
+
+        /* เอฟเฟกต์ตอนสแกนติด */
+        #success-flash {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
 
         #play-overlay {
             position: fixed;
@@ -115,6 +134,9 @@
             justify-content: center;
             align-items: center;
             z-index: 2000;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.6s ease;
         }
 
         #video-player {
@@ -129,52 +151,39 @@
             top: -100px; left: 50%;
             transform: translateX(-50%);
             background: #fff; color: #000;
-            padding: 10px 24px; border-radius: 40px;
+            padding: 12px 28px; border-radius: 50px;
             font-size: 0.9rem; font-weight: 600;
-            z-index: 3000; display: flex;
-            align-items: center; gap: 8px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-            border: 1.5px solid #000;
-            transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 3500; display: flex;
+            align-items: center; gap: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 2px solid #000;
+            transition: top 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        #fullscreen-hint.show { top: 30px; }
+        #fullscreen-hint.show { top: 40px; }
 
-        /* Admin Panel Styles */
-        #admin-panel {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; z-index: 5000;
-            padding: 40px 20px; overflow-y: auto;
-            display: none;
+        .status-msg {
+            position: absolute;
+            bottom: 15%; width: 100%;
+            text-align: center; font-size: 0.85rem;
+            color: #000; letter-spacing: 1px;
+            z-index: 10;
         }
-
-        .admin-input {
-            width: 100%; padding: 12px; margin-bottom: 20px;
-            border: 1px solid #ddd; border-radius: 8px;
-            font-family: 'Kanit', sans-serif;
-        }
-
-        textarea.admin-input { height: 120px; resize: none; }
-
-        .welcome-msg { white-space: pre-wrap; margin-bottom: 20px; line-height: 1.6; }
 
         .scan-indicator {
             position: absolute;
-            top: 10px; right: 10px;
-            width: 8px; height: 8px;
+            top: 15px; right: 15px;
+            width: 10px; height: 10px;
             border-radius: 50%;
             background: #eee;
+            transition: background 0.2s;
         }
-        .scan-active { background: #000 !important; }
+        .scan-active { background: #000 !important; box-shadow: 0 0 12px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
 
-    <!-- หน้าจอล็อก (เวลาเปิดเครื่อง) -->
-    <div id="lock-screen">
-        <div class="welcome-msg" id="display-msg">กรุณารอสักครู่</div>
-    </div>
+    <div id="success-flash"></div>
 
     <!-- หน้าจอหลัก -->
     <div id="overlay">
@@ -182,46 +191,32 @@
             <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
         </div>
-        <button class="btn-start" id="start-btn" disabled>กำลังรอ</button>
+        <button class="btn-start" id="start-btn" disabled>กำลังรอ...</button>
     </div>
 
-    <!-- ระบบแอดมิน -->
-    <div id="admin-panel">
-        <h2 style="margin-top:0">ตั้งค่าระบบ</h2>
-        <label>รหัสผ่านเข้าหน้าแอดมิน</label>
-        <input type="password" id="admin-pw" class="admin-input" placeholder="ใส่รหัสเพื่อเริ่มตั้งค่า">
-        
-        <div id="admin-controls" style="display:none">
-            <label>วันเวลาที่เปิดให้ใช้งาน (YYYY-MM-DD HH:mm)</label>
-            <input type="datetime-local" id="set-time" class="admin-input">
-            
-            <label>ข้อความหน้าเว็บ (หลายบรรทัดได้)</label>
-            <textarea id="set-msg" class="admin-input" placeholder="พิมพ์ข้อความที่ต้องการ..."></textarea>
-            
-            <button class="btn-admin" onclick="saveAdminSettings()">บันทึกการตั้งค่า</button>
-            <button class="btn-admin" style="background:#eee; color:#000; margin-top:10px" onclick="location.href=location.pathname">ออกจากหน้าแอดมิน</button>
-        </div>
-    </div>
-
+    <!-- ปุ่มแนะนำเต็มจอ -->
     <div id="fullscreen-hint">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5v3m13-3h3v3m0 12h-3v3m-13-3H5v3"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         ดูแบบเต็มจอ
     </div>
 
+    <!-- ส่วนกล้อง -->
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
-        <div class="scan-frame">
+        <div class="scan-frame" id="scan-frame">
             <div class="scan-indicator" id="lock-indicator"></div>
             <div class="scan-line"></div>
         </div>
-        <div style="position:absolute; bottom:15%; width:100%; text-align:center; font-size:0.85rem;" id="status-display">กำลังเตรียมเลนส์...</div>
+        <div class="status-msg" id="status-display">กำลังเตรียมระบบ AI...</div>
     </div>
 
+    <!-- หน้าจอพบความทรงจำ -->
     <div id="play-overlay">
-        <div style="width:56px;height:56px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+        <div style="width:64px;height:64px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 10px 30px rgba(0,0,0,0.1)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <span style="font-weight:600">พบความทรงจำแล้ว</span>
+        <span style="font-weight:600; font-size:1.1rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
+        <span style="font-size:0.85rem; opacity:0.5; margin-top:8px">แตะเพื่อเปิดรับชม</span>
     </div>
 
     <video id="video-player" src="Video.mp4" playsinline loop controls></video>
@@ -230,57 +225,60 @@
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
-        const lockScreen = document.getElementById('lock-screen');
-        const adminPanel = document.getElementById('admin-panel');
-        const displayMsg = document.getElementById('display-msg');
+        const previewContainer = document.getElementById('preview-container');
+        const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
         const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
+        const statusDisplay = document.getElementById('status-display');
+        const fsHint = document.getElementById('fullscreen-hint');
+        const successFlash = document.getElementById('success-flash');
 
-        let model, targetFeatures, targetColorGrid;
+        let model, targetFeatures, targetGridData;
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        // ความเข้มงวดสูงสุด: AI ต้องแม่น 0.93 และสีต้องตรง 4 จุด
-        const THRESHOLD = 0.93; 
+        // ความเข้มงวดอัจฉริยะ (Extreme Threshold)
+        const THRESHOLD = 0.94; 
+        const VARIANCE_THRESHOLD = 0.08; // ต้องมีสีที่หลากหลายพอ ไม่ใช่สีดำเรียบๆ แบบรีโมท
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 15;
+        const CONFIDENCE_REQUIRED = 12;
 
-        // 1. ระบบจุดไข่ปลาวิ่งในปุ่ม
+        // จุดไข่ปลาวิ่งในปุ่ม
         let dots = 0;
         const dotTimer = setInterval(() => {
-            if (startBtn.disabled && startBtn.innerText.startsWith("กำลังรอ")) {
+            if (startBtn.disabled && startBtn.innerText.includes("กำลังรอ")) {
                 dots = (dots + 1) % 4;
                 startBtn.innerText = "กำลังรอ" + ".".repeat(dots);
             }
         }, 500);
 
         async function init() {
-            checkAccess();
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
-                // สกัด Feature และ Color Grid (ตรวจสอบ 4 มุมของรูปเพื่อให้รีโมทหลอกไม่ได้)
+                // เรียนรู้โครงสร้างรูปถ่ายเป้าหมาย (3x3 Grid Color Analysis)
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
                     
-                    // วิเคราะห์สี 4 ส่วน (Top-Left, Top-Right, Bottom-Left, Bottom-Right)
+                    // วิเคราะห์ Grid 3x3 เพื่อป้องกันรีโมทหรือวัตถุสีเดียว
                     const h = img.shape[0], w = img.shape[1];
-                    const qH = Math.floor(h/2), qW = Math.floor(w/2);
-                    const grids = [
-                        img.slice([0,0,0],[qH,qW,3]).mean().div(255).dataSync()[0],
-                        img.slice([0,qW,0],[qH,qW,3]).mean().div(255).dataSync()[0],
-                        img.slice([qH,0,0],[qH,qW,3]).mean().div(255).dataSync()[0],
-                        img.slice([qH,qW,0],[qH,qW,3]).mean().div(255).dataSync()[0]
-                    ];
+                    const gridH = Math.floor(h/3), gridW = Math.floor(w/3);
+                    let grids = [];
+                    for(let i=0; i<3; i++){
+                        for(let j=0; j<3; j++){
+                            const slice = img.slice([i*gridH, j*gridW, 0], [gridH, gridW, 3]);
+                            grids.push(slice.mean().div(255).dataSync()[0]);
+                        }
+                    }
                     return { feat, grids };
                 });
                 
                 targetFeatures = results.feat;
-                targetColorGrid = results.grids;
+                targetGridData = results.grids;
                 
                 startBtn.innerText = "เริ่มสแกนความทรงจำ";
                 startBtn.disabled = false;
@@ -288,63 +286,36 @@
             } catch (e) { startBtn.innerText = "โหลดผิดพลาด"; }
         }
 
-        // 2. ระบบ Admin
-        const isAdminMode = new URLSearchParams(window.location.search).has('admin');
-        if (isAdminMode) {
-            adminPanel.style.display = 'block';
-            document.getElementById('admin-pw').oninput = (e) => {
-                if (e.target.value === 'Admin123') {
-                    document.getElementById('admin-controls').style.display = 'block';
-                    e.target.style.display = 'none';
-                    // โหลดข้อมูลเก่า
-                    document.getElementById('set-time').value = localStorage.getItem('openAt') || '';
-                    document.getElementById('set-msg').value = localStorage.getItem('welcomeMsg') || '';
-                }
-            };
-        }
-
-        function saveAdminSettings() {
-            localStorage.setItem('openAt', document.getElementById('set-time').value);
-            localStorage.setItem('welcomeMsg', document.getElementById('set-msg').value);
-            alert("บันทึกสำเร็จ!");
-            location.href = location.pathname;
-        }
-
-        function checkAccess() {
-            const openAt = localStorage.getItem('openAt');
-            const welcomeMsg = localStorage.getItem('welcomeMsg') || "ยังไม่ถึงเวลาเปิดใช้งาน";
-            
-            if (openAt) {
-                const targetDate = new Date(openAt).getTime();
-                const now = Date.now();
-                if (now < targetDate) {
-                    lockScreen.style.display = 'flex';
-                    displayMsg.innerText = welcomeMsg;
-                }
-            }
-        }
-
-        // 3. ระบบสแกนขั้นสูง
         startBtn.onclick = () => {
-            document.getElementById('preview-container').classList.add('analyzing');
+            previewContainer.classList.add('analyzing');
             startBtn.disabled = true;
             setTimeout(() => {
                 overlay.style.opacity = '0';
+                overlay.style.transform = 'scale(0.95)';
                 setTimeout(async () => {
                     overlay.style.display = 'none';
-                    document.getElementById('camera-container').style.display = 'block';
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                    webcam.srcObject = stream;
-                    webcam.onloadedmetadata = () => {
-                        setTimeout(() => { isReadyToAnalyze = true; requestAnimationFrame(predict); }, 2500);
-                    };
+                    cameraContainer.style.display = 'block';
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                        });
+                        webcam.srcObject = stream;
+                        webcam.onloadedmetadata = () => {
+                            videoPlayer.load();
+                            setTimeout(() => {
+                                isReadyToAnalyze = true;
+                                statusDisplay.innerText = "จัดวางรูปถ่ายให้พอดีกรอบ";
+                                requestAnimationFrame(predict);
+                            }, 2500);
+                        };
+                    } catch (err) { statusDisplay.innerText = "ไม่สามารถเปิดกล้องได้"; }
                 }, 500);
             }, 1200);
         };
 
         async function predict() {
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4) {
-                const result = tf.tidy(() => {
+                const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
                     const size = Math.min(h, w) * 0.55;
@@ -352,37 +323,38 @@
                     
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
-                    // ตรวจ AI Feature
+                    // 1. ตรวจสอบ MobileNet Similarity
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
 
-                    // ตรวจ Color Grid (รีโมทจะมีสีดำเกือบทั้งอัน แต่รูปจะมีสีต่างกันใน 4 ส่วน)
-                    const q = 112;
+                    // 2. ตรวจสอบ Color Distribution (ป้องกันวัตถุสีเรียบ)
+                    const gridSide = 74; // 224 / 3
                     const cImg = cropped.squeeze();
-                    const currentGrids = [
-                        cImg.slice([0,0,0],[q,q,3]).mean().div(255).dataSync()[0],
-                        cImg.slice([0,q,0],[q,q,3]).mean().div(255).dataSync()[0],
-                        cImg.slice([q,0,0],[q,q,3]).mean().div(255).dataSync()[0],
-                        cImg.slice([q,q,0],[q,q,3]).mean().div(255).dataSync()[0]
-                    ];
-                    
-                    let gridMatch = true;
-                    for(let i=0; i<4; i++) {
-                        if (Math.abs(currentGrids[i] - targetColorGrid[i]) > 0.18) gridMatch = false;
+                    let currentGrids = [];
+                    for(let i=0; i<3; i++){
+                        for(let j=0; j<3; j++){
+                            const slice = cImg.slice([i*gridSide, j*gridSide, 0], [gridSide, gridSide, 3]);
+                            currentGrids.push(slice.mean().div(255).dataSync()[0]);
+                        }
                     }
 
-                    return { sim, gridMatch };
+                    // คำนวณความต่างของสีเฉลี่ย และ Variance ของสี
+                    let diffSum = 0;
+                    let mean = currentGrids.reduce((a, b) => a + b) / 9;
+                    let variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
+
+                    for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
+                    const colorMatch = (diffSum / 9) < 0.15;
+                    const hasTexture = variance > VARIANCE_THRESHOLD; // ปฏิเสธวัตถุสีเรียบ (รีโมท/ผนัง)
+
+                    return { sim, colorMatch, hasTexture };
                 });
 
-                if (result.sim > THRESHOLD && result.gridMatch) {
+                if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
                     detectionConfidence++;
                     lockIndicator.classList.add('scan-active');
                     if (detectionConfidence >= CONFIDENCE_REQUIRED) {
-                        isDetected = true;
-                        webcam.srcObject.getTracks().forEach(t => t.stop());
-                        document.getElementById('camera-container').style.display = 'none';
-                        videoPlayer.style.display = 'block';
-                        playOverlay.style.display = 'flex';
+                        triggerSuccess();
                         return;
                     }
                 } else {
@@ -393,7 +365,44 @@
             } else if (!isDetected) requestAnimationFrame(predict);
         }
 
-        playOverlay.onclick = () => { playOverlay.style.display = 'none'; videoPlayer.play(); };
+        function triggerSuccess() {
+            isDetected = true;
+            // เอฟเฟกต์แสงวาบ
+            successFlash.style.opacity = '1';
+            webcam.style.filter = 'brightness(2) contrast(0.5) blur(10px)';
+            document.getElementById('scan-frame').style.transform = 'translate(-50%, -50%) scale(0.5)';
+            document.getElementById('scan-frame').style.opacity = '0';
+
+            setTimeout(() => {
+                if (webcam.srcObject) webcam.srcObject.getTracks().forEach(t => t.stop());
+                cameraContainer.style.display = 'none';
+                successFlash.style.opacity = '0';
+                
+                videoPlayer.style.display = 'block';
+                playOverlay.style.display = 'flex';
+                setTimeout(() => playOverlay.style.opacity = '1', 50);
+            }, 400);
+        }
+
+        playOverlay.onclick = () => {
+            playOverlay.style.opacity = '0';
+            setTimeout(() => {
+                playOverlay.style.display = 'none';
+                videoPlayer.play();
+                setTimeout(() => {
+                    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
+                    if (!isFS) fsHint.classList.add('show');
+                    setTimeout(() => fsHint.classList.remove('show'), 6000);
+                }, 2000);
+            }, 400);
+        };
+
+        fsHint.onclick = () => {
+            const el = videoPlayer;
+            if (el.requestFullscreen) el.requestFullscreen();
+            else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
+            fsHint.classList.remove('show');
+        };
 
         init();
     </script>
