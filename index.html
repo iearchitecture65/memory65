@@ -177,20 +177,6 @@
             transition: opacity 0.4s ease;
         }
 
-        #play-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.98);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-        }
-
         /* Video Container */
         #video-container {
             position: fixed;
@@ -207,9 +193,9 @@
         /* ปุ่มเต็มจอแบบเด้งลงมาจากด้านบนกึ่งกลาง */
         #fullscreen-toggle {
             position: absolute;
-            top: -80px; /* ซ่อนไว้เหนือหน้าจอ */
+            top: -100px; /* เริ่มต้นซ่อนไว้เหนือจอ */
             left: 50%;
-            transform: translateX(-50%); /* จัดกึ่งกลางแนวนอน */
+            transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
@@ -225,13 +211,13 @@
             gap: 10px;
             font-weight: 300;
             letter-spacing: 0.5px;
-            transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* เอฟเฟกต์การเด้ง */
+            transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
-        /* คลาสสำหรับแสดงปุ่ม */
+        /* แสดงปุ่ม */
         #fullscreen-toggle.show {
-            top: 30px; /* เลื่อนลงมาตำแหน่งที่มองเห็น */
+            top: 30px;
         }
 
         #fullscreen-toggle:active { transform: translateX(-50%) scale(0.95); background: rgba(255,255,255,0.4); }
@@ -293,15 +279,6 @@
         </div>
     </div>
 
-    <!-- หน้าจอพบความทรงจำ -->
-    <div id="play-overlay">
-        <div style="width:50px;height:50px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
-        </div>
-        <span style="font-weight:400; font-size:0.95rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
-        <span style="font-size:0.75rem; opacity:0.4; margin-top:6px">แตะเพื่อเปิดรับชม</span>
-    </div>
-
     <!-- Video Container -->
     <div id="video-container">
         <button id="fullscreen-toggle">
@@ -313,7 +290,7 @@
 
     <script>
         const DRIVE_ID = "1myp5J_EBbO9jZJyTk-5kid2Qy5aBpRHQ";
-        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
+        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview?autoplay=1`;
 
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
@@ -324,7 +301,6 @@
         const videoContainer = document.getElementById('video-container');
         const iframeTarget = document.getElementById('iframe-target');
         const fsToggle = document.getElementById('fullscreen-toggle');
-        const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
         const subStatus = document.getElementById('sub-status');
         const flashBtn = document.getElementById('flash-btn');
@@ -488,57 +464,45 @@
                 if (videoStream) videoStream.getTracks().forEach(t => t.stop());
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
-                playOverlay.style.display = 'flex';
-                setTimeout(() => playOverlay.style.opacity = '1', 50);
-            }, 400);
-        }
-
-        playOverlay.onclick = () => {
-            playOverlay.style.opacity = '0';
-            setTimeout(() => {
-                playOverlay.style.display = 'none';
                 
-                // โหลด Iframe
+                // เริ่มแสดงวิดีโอทันที
                 iframeTarget.innerHTML = `
                     <iframe 
+                        id="video-iframe"
                         src="${PREVIEW_URL}" 
-                        allow="autoplay" 
+                        allow="autoplay; fullscreen" 
                         allowfullscreen>
                     </iframe>`;
                 videoContainer.style.display = 'block';
 
-                // --- ส่วนที่เพิ่มเข้ามาใหม่: เด้งปุ่มเต็มจอลงมาจากด้านบนหลังจาก 2 วินาที ---
+                // --- หัวใจหลัก: เด้งปุ่มออกมาหลังจากวิดีโอเล่นไปแล้ว 2 วินาที ---
                 setTimeout(() => {
                     fsToggle.classList.add('show');
                 }, 2000);
 
             }, 400);
-        };
+        }
 
-        // ฟังก์ชัน Toggle Fullscreen
+        // ฟังก์ชัน Fullscreen แบบครอบคลุมเบราว์เซอร์มือถือ
         fsToggle.onclick = () => {
-            const el = videoContainer;
-            if (!document.fullscreenElement) {
-                if (el.requestFullscreen) el.requestFullscreen();
-                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-                else if (el.msRequestFullscreen) el.msRequestFullscreen();
-                fsToggle.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-                    ออกจากการขยาย`;
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-                fsToggle.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg>
-                    ดูแบบเต็มจอ`;
+            const el = videoContainer; 
+            
+            // ตรวจสอบทุกคำสั่งที่เป็นไปได้สำหรับ Fullscreen
+            const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            
+            if (requestFS) {
+                requestFS.call(el).then(() => {
+                    // เมื่อขยายสำเร็จ ให้ปุ่มหายไปทันทีตามคำขอ
+                    fsToggle.classList.remove('show');
+                    setTimeout(() => fsToggle.style.display = 'none', 600);
+                }).catch(err => {
+                    console.error("Fullscreen failed:", err);
+                    // หากขยายผ่าน Container ไม่ได้ ให้พยายามขยายที่ Iframe โดยตรง
+                    const iframe = document.getElementById('video-iframe');
+                    if (iframe.webkitEnterFullscreen) iframe.webkitEnterFullscreen();
+                });
             }
         };
-
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                fsToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg> ดูแบบเต็มจอ`;
-            }
-        });
 
         init();
     </script>
