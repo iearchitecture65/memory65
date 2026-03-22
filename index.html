@@ -245,26 +245,34 @@
         const statusDisplay = document.getElementById('status-display');
         const lockIndicator = document.getElementById('lock-indicator');
 
-        let model, targetFeatures;
+        let model, targetFeatures, targetColorProfile;
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        // เพิ่มความเข้มงวดสูงสุดเพื่อป้องกันการตรวจจับผิดพลาด
-        const THRESHOLD = 0.85; 
+        // เพิ่มความเข้มงวดเป็น 0.90 เพื่อให้สแกนติดเฉพาะรูปเป้าหมายจริงๆ
+        const THRESHOLD = 0.90; 
+        const COLOR_DIFF_THRESHOLD = 0.15; // ค่าความแตกต่างของสีที่ยอมรับได้
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 25; // ต้องการการยืนยันที่ยาวนานและนิ่งขึ้น
+        const CONFIDENCE_REQUIRED = 20;
 
         async function init() {
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
+                // 1. วิเคราะห์ MobileNet Features
                 const targetTensor = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     return tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1);
                 });
-                
                 targetFeatures = model.infer(targetTensor, true);
+                
+                // 2. วิเคราะห์ Color Profile (Average RGB) เพื่อใช้แยกแยะวัตถุที่มีสีเดียว (เช่น รีโมทดำ)
+                targetColorProfile = tf.tidy(() => {
+                    const img = tf.browser.fromPixels(targetImg).toFloat();
+                    return img.mean([0, 1]).div(255).dataSync(); // [R, G, B] ในสเกล 0-1
+                });
+
                 targetTensor.dispose();
                 
                 startBtn.innerText = "เริ่มสแกนความทรงจำ";
@@ -274,7 +282,7 @@
 
         startBtn.onclick = () => {
             previewContainer.classList.add('analyzing');
-            startBtn.innerText = "กำลังประมวลผล...";
+            startBtn.innerText = "กำลังวิเคราะห์โครงสร้าง...";
             startBtn.disabled = true;
 
             setTimeout(() => {
@@ -308,7 +316,6 @@
                         
                         webcam.onloadedmetadata = () => {
                             videoPlayer.load();
-                            // เพิ่มระยะเวลารอคอยเพื่อให้เลนส์กล้องนิ่งจริงๆ
                             setTimeout(() => {
                                 isReadyToAnalyze = true;
                                 statusDisplay.innerText = "วางรูปถ่ายให้พอดีกับกรอบ";
@@ -324,29 +331,40 @@
 
         async function predict() {
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4) {
-                const score = tf.tidy(() => {
+                const results = tf.tidy(() => {
                     const fullImg = tf.browser.fromPixels(webcam);
                     const [h, w] = fullImg.shape;
                     
-                    // บีบพื้นที่ ROI ให้เล็กลงเพื่อความแม่นยำสูง
                     const size = Math.min(h, w) * 0.5;
                     const startH = (h - size) / 2;
                     const startW = (w - size) / 2;
                     
-                    const croppedImg = tf.image.cropAndResize(
+                    const cropped = tf.image.cropAndResize(
                         fullImg.expandDims(0).toFloat(),
                         [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]],
                         [0],
                         [224, 224]
-                    ).div(127.5).sub(1);
+                    );
 
-                    const feat = model.infer(croppedImg, true);
+                    // ตรวจสอบลักษณะเด่น (AI Score)
+                    const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const a = tf.div(targetFeatures, tf.norm(targetFeatures));
                     const b = tf.div(feat, tf.norm(feat));
-                    return tf.sum(tf.mul(a, b)).dataSync()[0];
+                    const aiScore = tf.sum(tf.mul(a, b)).dataSync()[0];
+
+                    // ตรวจสอบโทนสี (Color Score)
+                    const currentColor = cropped.mean([1, 2]).div(255).dataSync();
+                    const colorDiff = Math.sqrt(
+                        Math.pow(currentColor[0] - targetColorProfile[0], 2) +
+                        Math.pow(currentColor[1] - targetColorProfile[1], 2) +
+                        Math.pow(currentColor[2] - targetColorProfile[2], 2)
+                    );
+
+                    return { aiScore, colorDiff };
                 });
 
-                if (score > THRESHOLD) {
+                // ต้องผ่านทั้ง AI Score (โครงสร้างรูป) และ Color Check (โทนสีต้องไม่เพี้ยน)
+                if (results.aiScore > THRESHOLD && results.colorDiff < COLOR_DIFF_THRESHOLD) {
                     detectionConfidence++;
                     lockIndicator.classList.add('scan-active');
                     
@@ -361,7 +379,7 @@
                         return;
                     }
                 } else {
-                    // หากคะแนนตกลงแม้เพียงนิดเดียว ให้รีเซ็ตคะแนนสะสมเป็น 0 ทันที
+                    // รีเซ็ตทันทีถ้าไม่ตรง เพื่อป้องกันวัตถุอื่นหลอก
                     detectionConfidence = 0;
                     lockIndicator.classList.remove('scan-active');
                 }
