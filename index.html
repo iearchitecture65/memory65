@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memory 65</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
@@ -39,10 +39,10 @@
         .preview-box {
             position: relative;
             width: 100%;
-            max-width: 280px; /* ปรับให้เล็กลง */
+            max-width: 280px;
             aspect-ratio: 16 / 9;
             margin-bottom: 30px;
-            border-radius: 8px; /* มินิมอลขอบมนนิดเดียว */
+            border-radius: 12px;
             overflow: hidden;
             border: 1px solid rgba(0,0,0,0.08);
             background: #fdfdfd;
@@ -52,54 +52,65 @@
             width: 100%; height: 100%; 
             object-fit: cover; 
             opacity: 0.9;
-            transition: transform 1.2s ease, filter 1.2s ease;
+            transition: transform 1.2s ease, filter 0.5s ease;
         }
 
         .preview-scan-line {
             position: absolute;
             top: 0; left: 0;
-            width: 100%; height: 1px;
-            background: rgba(0,0,0,0.2);
+            width: 100%; height: 2px;
+            background: #000;
             z-index: 2;
             display: none;
             will-change: transform;
         }
 
-        @keyframes scanning { 
-            0% { transform: translateY(0); opacity: 0; } 
-            50% { opacity: 1; }
-            100% { transform: translateY(157px); opacity: 0; } 
+        /* แอนิเมชันวิ่งลงครั้งเดียว */
+        @keyframes scanDownOnce { 
+            0% { transform: translateY(0); opacity: 1; } 
+            100% { transform: translateY(157px); opacity: 1; } 
+        }
+
+        /* แอนิเมชันกระพริบ */
+        @keyframes flashEffect {
+            0%, 100% { opacity: 0.9; filter: grayscale(1) brightness(1); }
+            50% { opacity: 0.4; filter: grayscale(1) brightness(2); }
         }
         
         .analyzing .preview-scan-line { 
             display: block; 
-            animation: scanning 2s linear infinite; 
+            animation: scanDownOnce 1.2s forwards; 
         }
         
         .analyzing img { 
             filter: grayscale(1) brightness(0.95);
         }
 
-        /* ปุ่มเริ่มสแกนแบบมินิมอล */
+        .flashing img {
+            animation: flashEffect 0.2s infinite;
+        }
+
+        /* ปุ่มเริ่มสแกนแบบมินิมอลและมนกลม */
         .btn-start {
-            background: transparent;
-            color: #000;
-            border: 1px solid #000;
+            background: #000;
+            color: #fff;
+            border: none;
             width: auto;
-            min-width: 140px;
-            padding: 10px 20px;
-            font-size: 0.85rem; 
+            min-width: 160px;
+            padding: 14px 28px;
+            font-size: 0.9rem; 
             letter-spacing: 1px;
-            border-radius: 4px;
+            border-radius: 100px; /* มนกลม */
             cursor: pointer;
-            font-weight: 300;
+            font-weight: 400;
             font-family: 'Kanit', sans-serif;
             transition: all 0.3s ease;
             white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
-        .btn-start:disabled { border-color: #eee; color: #ccc; cursor: not-allowed; }
-        .btn-start:active { background: #000; color: #fff; }
+        .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
+        .btn-start:active { transform: scale(0.95); }
 
         /* ส่วนกล้องสแกน */
         #camera-container {
@@ -117,7 +128,7 @@
             width: 75vw; aspect-ratio: 16 / 10;
             max-width: 300px;
             border: 1px solid rgba(0,0,0,0.3);
-            border-radius: 4px;
+            border-radius: 8px;
             box-shadow: 0 0 0 2000px rgba(255,255,255,0.85);
             z-index: 5;
             transition: all 0.5s ease;
@@ -162,7 +173,7 @@
             transition: opacity 0.6s ease;
         }
 
-        /* YouTube Container */
+        /* Video Player */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -170,9 +181,9 @@
             background: #000;
         }
         
-        #video-container iframe {
+        #video-player {
             width: 100%; height: 100%;
-            border: none;
+            object-fit: contain;
         }
 
         #fullscreen-hint {
@@ -180,7 +191,7 @@
             top: -100px; left: 50%;
             transform: translateX(-50%);
             background: #fff; color: #000;
-            padding: 8px 20px; border-radius: 4px;
+            padding: 8px 20px; border-radius: 100px;
             font-size: 0.8rem; font-weight: 400;
             z-index: 3500; display: flex;
             align-items: center; gap: 8px;
@@ -224,7 +235,7 @@
         <button class="btn-start" id="start-btn" disabled>กำลังรอ...</button>
     </div>
 
-    <div id="fullscreen-hint">หมุนจอเพื่อรับชมภาพขนาดใหญ่</div>
+    <div id="fullscreen-hint">แตะวิดีโอเพื่อดูแบบเต็มจอ</div>
 
     <!-- ส่วนกล้อง -->
     <div id="camera-container">
@@ -245,11 +256,16 @@
         <span style="font-size:0.75rem; opacity:0.4; margin-top:6px">แตะเพื่อเปิดรับชม</span>
     </div>
 
-    <!-- Container สำหรับ YouTube (จะโหลดเมื่อสแกนติด) -->
-    <div id="video-container"></div>
+    <!-- Video Container -->
+    <div id="video-container">
+        <video id="video-player" playsinline loop controls crossorigin="anonymous"></video>
+    </div>
 
     <script>
-        const YT_ID = "mrZVfI8QM0I";
+        // ไฟล์วิดีโอ Google Drive (Direct Link)
+        const DRIVE_ID = "1K6XKIMPY8ZB4O5oECe9Qg3k6urdiXyrT";
+        const VIDEO_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_ID}`;
+
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const overlay = document.getElementById('overlay');
@@ -257,6 +273,7 @@
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoContainer = document.getElementById('video-container');
+        const videoPlayer = document.getElementById('video-player');
         const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
         const statusDisplay = document.getElementById('status-display');
@@ -303,34 +320,44 @@
                 targetFeatures = results.feat;
                 targetGridData = results.grids;
                 
-                startBtn.innerText = "เริ่มสแกน";
+                startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
                 startBtn.disabled = false;
                 clearInterval(dotTimer);
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
 
         startBtn.onclick = () => {
+            // Stage 1: เส้นวิ่งลง
             previewContainer.classList.add('analyzing');
             startBtn.disabled = true;
+            
             setTimeout(() => {
-                overlay.style.opacity = '0';
-                setTimeout(async () => {
-                    overlay.style.display = 'none';
-                    cameraContainer.style.display = 'block';
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
-                        });
-                        webcam.srcObject = stream;
-                        webcam.onloadedmetadata = () => {
-                            setTimeout(() => {
-                                isReadyToAnalyze = true;
-                                requestAnimationFrame(predict);
-                            }, 2000);
-                        };
-                    } catch (err) { statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
-                }, 500);
-            }, 1000);
+                // Stage 2: กระพริบๆ
+                previewContainer.classList.add('flashing');
+                
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    setTimeout(async () => {
+                        overlay.style.display = 'none';
+                        cameraContainer.style.display = 'block';
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ 
+                                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                            });
+                            webcam.srcObject = stream;
+                            webcam.onloadedmetadata = () => {
+                                // โหลดวิดีโอรอไว้
+                                videoPlayer.src = VIDEO_URL;
+                                videoPlayer.load();
+                                setTimeout(() => {
+                                    isReadyToAnalyze = true;
+                                    requestAnimationFrame(predict);
+                                }, 2000);
+                            };
+                        } catch (err) { statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
+                    }, 500);
+                }, 1000); // กระพริบ 1 วินาที
+            }, 1200); // รอเส้นวิ่งลง 1.2 วินาที
         };
 
         async function predict() {
@@ -403,10 +430,8 @@
             playOverlay.style.opacity = '0';
             setTimeout(() => {
                 playOverlay.style.display = 'none';
-                
-                // โหลดวิดีโอ YouTube เข้าไปใน Container
-                videoContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${YT_ID}?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
                 videoContainer.style.display = 'block';
+                videoPlayer.play();
 
                 setTimeout(() => {
                     fsHint.classList.add('show');
