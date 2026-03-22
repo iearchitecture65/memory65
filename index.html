@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memory Lens</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;600&display=swap" rel="stylesheet">
+    <!-- เปลี่ยนเป็นฟอนต์ Kanit สไตล์มินิมอล ไม่มีหัว -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
@@ -13,7 +14,7 @@
         body { 
             margin: 0; 
             overflow: hidden; 
-            font-family: 'Sarabun', sans-serif; 
+            font-family: 'Kanit', sans-serif; 
             background: #fff;
             color: #000;
             -webkit-tap-highlight-color: transparent;
@@ -47,6 +48,7 @@
             background: #000; color: #fff; border: none;
             padding: 15px 50px; font-size: 1.1rem; 
             border-radius: 50px; cursor: pointer; font-weight: 600;
+            font-family: 'Kanit', sans-serif;
             transition: transform 0.2s, background 0.3s;
         }
         
@@ -57,7 +59,7 @@
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none;
-            background: #000;
+            background: #fff;
         }
 
         #webcam { width: 100%; height: 100%; object-fit: cover; }
@@ -68,17 +70,17 @@
             transform: translate(-50%, -50%);
             width: 80vw; aspect-ratio: 16 / 10;
             max-width: 350px;
-            border: 1px solid rgba(255,255,255,0.5);
-            border-radius: 10px;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.6);
+            border: 2px solid #000;
+            border-radius: 12px;
+            box-shadow: 0 0 0 1000px rgba(255,255,255,0.7);
         }
 
         .scan-line {
             position: absolute;
-            top: 0; width: 100%; height: 2px;
-            background: #fff;
-            box-shadow: 0 0 15px #fff;
-            animation: scan 2s ease-in-out infinite;
+            top: 0; width: 100%; height: 3px;
+            background: #000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            animation: scan 2.5s ease-in-out infinite;
         }
 
         @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
@@ -105,29 +107,41 @@
             background: #000;
         }
 
-        /* ปุ่มแนะนำเต็มจอที่เด้งลงมาจากด้านบน */
         #fullscreen-hint {
             position: fixed;
-            top: -100px; /* ซ่อนไว้ด้านบนก่อน */
+            top: -100px;
             left: 50%;
             transform: translateX(-50%);
-            background: #000;
-            color: #fff;
-            padding: 12px 24px;
+            background: #fff;
+            color: #000;
+            padding: 12px 28px;
             border-radius: 40px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: 600;
             z-index: 3000;
             display: flex;
             align-items: center;
             gap: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            border: 2px solid #000;
             cursor: pointer;
+            font-family: 'Kanit', sans-serif;
             transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         #fullscreen-hint.show {
-            top: 30px; /* เลื่อนลงมาแสดง */
+            top: 40px;
+        }
+
+        .status-msg {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #000;
+            letter-spacing: 1px;
+            z-index: 10;
         }
     </style>
 </head>
@@ -140,22 +154,22 @@
         <button class="btn-start" id="start-btn" disabled>กำลังโหลด...</button>
     </div>
 
-    <!-- ปุ่มแนะนำเต็มจอ -->
     <div id="fullscreen-hint">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-        ดูแบบเต็มจอ
+        แตะเพื่อดูแบบเต็มจอ
     </div>
 
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
         <div class="scan-frame"><div class="scan-line"></div></div>
+        <div class="status-msg">ส่องไปที่รูปถ่ายของคุณ</div>
     </div>
 
     <div id="play-overlay">
         <div style="width:60px;height:60px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:15px">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <span style="letter-spacing:1px; font-size:0.9rem; font-weight:600">แตะเพื่อดูความทรงจำ</span>
+        <span style="letter-spacing:1px; font-size:1.1rem; font-weight:600">พบความทรงจำแล้ว</span>
     </div>
 
     <video id="video-player" src="Video.mp4" playsinline loop controls></video>
@@ -172,17 +186,12 @@
 
         let model, targetFeatures;
         let isDetected = false;
-        // ปรับค่าความแม่นยำสูงสุด
         const THRESHOLD = 0.58; 
 
         async function init() {
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
-                
-                // ใช้โมเดลรุ่นประสิทธิภาพสูง
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
-                
-                // สกัดลักษณะเด่นของภาพหมู่ถาวร
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
                 targetTensor.dispose();
@@ -198,7 +207,8 @@
                 overlay.style.display = 'none';
                 cameraContainer.style.display = 'block';
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" }, audio: false 
+                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                    audio: false 
                 });
                 webcam.srcObject = stream;
                 videoPlayer.load();
@@ -232,12 +242,10 @@
             playOverlay.style.display = 'none';
             videoPlayer.play();
 
-            // หลังจากเล่น 2 วินาที ให้เด้งปุ่มแนะนำลงมาจากด้านบน
             setTimeout(() => {
                 const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
                 if (!isFS) {
                     fsHint.classList.add('show');
-                    // ซ่อนอัตโนมัติหลังจากผ่านไป 6 วินาทีถ้าไม่ได้กด
                     setTimeout(() => fsHint.classList.remove('show'), 6000);
                 }
             }, 2000);
@@ -246,12 +254,11 @@
         fsHint.onclick = () => {
             const el = videoPlayer;
             if (el.requestFullscreen) el.requestFullscreen();
-            else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen(); // iOS
+            else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
             else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
             fsHint.classList.remove('show');
         };
 
-        // ซ่อนปุ่มเมื่อเข้าหรือออกเต็มจอ
         const onFSChange = () => {
             const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
             if (isFS) fsHint.classList.remove('show');
