@@ -3,22 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Lens - เก็บความทรงจำผ่านเลนส์</title>
+    <title>Memory Lens</title>
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <!-- TensorFlow.js & MobileNet -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
     <style>
-        :root {
-            --accent-color: #fff;
-            --bg-gradient: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
-            --border-radius: 20px;
-        }
-
         body { 
             margin: 0; 
             overflow: hidden; 
@@ -28,294 +19,107 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* หน้าจอเริ่มต้น */
         #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-gradient);
+            background: #000;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            transition: opacity 0.8s ease;
-            text-align: center;
-            padding: 20px;
-            box-sizing: border-box;
+            transition: opacity 0.5s ease;
         }
 
-        .container { width: 100%; max-width: 450px; }
-        
-        h1 { 
-            font-weight: 300; 
-            letter-spacing: 8px; 
-            text-transform: uppercase; 
-            font-size: clamp(1.5rem, 5vw, 2.2rem); 
-            margin-bottom: 10px;
-            background: linear-gradient(to bottom, #fff, #888);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .loading-text { font-weight: 300; font-size: 1rem; opacity: 0.7; margin-bottom: 5px; }
-        
-        #timer-box {
-            font-size: 0.8rem;
-            opacity: 0.4;
-            font-weight: 300;
-            margin-bottom: 30px;
-        }
-
-        /* ปรับเป็นสี่เหลี่ยมแนวนอน */
-        .image-preview-container {
-            position: relative;
-            width: 280px; height: 180px;
-            margin: 0 auto 40px;
-        }
-
-        .image-preview {
-            width: 100%; height: 100%;
-            background: rgba(255,255,255,0.03);
-            border-radius: var(--border-radius);
-            padding: 4px;
-            border: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 50px rgba(255,255,255,0.05);
+        .preview-box {
+            width: 280px;
+            aspect-ratio: 16 / 9;
+            margin-bottom: 40px;
+            border-radius: 12px;
             overflow: hidden;
-            position: relative;
-            z-index: 2;
-        }
-        
-        .image-preview img { 
-            width: 100%; height: 100%; 
-            object-fit: cover; 
-            border-radius: calc(var(--border-radius) - 4px);
-            opacity: 0.9;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
-        /* เอฟเฟกต์โหลดแบบสี่เหลี่ยม */
-        .loading-border {
-            position: absolute;
-            top: -2px; left: -2px; right: -2px; bottom: -2px;
-            border-radius: calc(var(--border-radius) + 2px);
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            background-size: 200% 100%;
-            animation: moveGradient 2s linear infinite;
-            z-index: 1;
-        }
-
-        @keyframes moveGradient {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
+        .preview-box img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
 
         .btn-start {
-            background: white; color: black; border: none;
-            width: 85%; max-width: 280px;
-            padding: 20px 0; font-size: 1rem; 
-            letter-spacing: 2px; 
-            border-radius: 100px; cursor: pointer; font-weight: 600;
-            text-transform: uppercase;
-            box-shadow: 0 15px 35px rgba(255,255,255,0.1);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #fff; color: #000; border: none;
+            padding: 15px 50px; font-size: 1.1rem; 
+            border-radius: 50px; cursor: pointer; font-weight: 600;
+            transition: transform 0.2s;
         }
         
+        .btn-start:disabled { background: #222; color: #444; }
         .btn-start:active { transform: scale(0.95); }
-        .btn-start:disabled { 
-            background: #1a1a1a; 
-            color: #444; 
-            cursor: not-allowed; 
-            box-shadow: none;
-        }
 
-        /* กล้อง */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             display: none;
-            background: #000;
         }
 
         #webcam { width: 100%; height: 100%; object-fit: cover; }
 
-        .scan-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-        }
-
-        /* ปรับเฟรมสแกนเป็นสี่เหลี่ยมตามรูป */
         .scan-frame {
-            width: 80vw; height: 50vw;
-            max-width: 320px; max-height: 200px;
-            border: 1px solid rgba(255,255,255,0.4);
-            border-radius: 15px;
-            position: relative;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw; aspect-ratio: 16 / 10;
+            max-width: 350px;
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 10px;
             box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
         }
 
         .scan-line {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: linear-gradient(to right, transparent, #fff, transparent);
+            top: 0; width: 100%; height: 2px;
+            background: #fff;
             box-shadow: 0 0 15px #fff;
-            animation: scanMove 3s ease-in-out infinite;
+            animation: scan 2s ease-in-out infinite;
         }
 
-        @keyframes scanMove {
-            0%, 100% { top: 0%; }
-            50% { top: 100%; }
-        }
+        @keyframes scan { 0%, 100% { top: 5%; } 50% { top: 95%; } }
 
         #play-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0,0,0,0.9);
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2500;
-            cursor: pointer;
-            backdrop-filter: blur(15px);
-        }
-
-        #play-overlay .icon-play {
-            width: 80px; height: 80px;
-            background: #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
-            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255,255,255,0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+            z-index: 2000;
         }
 
         #video-player {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             display: none;
-            z-index: 2000;
-            background: #000;
+            z-index: 1500;
             object-fit: contain;
-        }
-
-        #scan-ui {
-            position: absolute;
-            bottom: 60px; width: 100%;
-            text-align: center; pointer-events: none;
-            z-index: 100;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            background: rgba(0,0,0,0.7);
-            padding: 14px 28px;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255,255,255,0.2);
-            backdrop-filter: blur(10px);
-            align-items: center;
-            gap: 12px;
-        }
-
-        #fullscreen-hint {
-            position: fixed;
-            top: 20px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9); 
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            z-index: 3000;
-            display: none;
-            cursor: pointer;
-        }
-
-        .svg-icon { width: 18px; height: 18px; fill: currentColor; }
-
-        #reload-btn {
-            position: fixed;
-            bottom: 30px; left: 30px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            width: 50px; height: 50px;
-            border-radius: 50%;
-            z-index: 3000;
-            display: none;
-            border: 1px solid rgba(255,255,255,0.2);
-            cursor: pointer;
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
     </style>
 </head>
 <body>
 
     <div id="overlay">
-        <div class="container">
-            <h1>Memory Lens</h1>
-            <div id="loading-info">
-                <p class="loading-text" id="main-desc">กำลังเริ่มระบบ AI</p>
-                <div id="timer-box">กำลังเตรียมความพร้อมใน <span id="seconds">5</span> วินาที</div>
-            </div>
-            
-            <div class="image-preview-container">
-                <div class="loading-border"></div>
-                <div class="image-preview">
-                    <img id="target-img" src="memory-picture.JPG" alt="Target Memory">
-                </div>
-            </div>
-            
-            <button class="btn-start" id="start-btn" disabled>กรุณารอสักครู่</button>
+        <div class="preview-box">
+            <img id="target-img" src="memory-picture.JPG">
         </div>
-    </div>
-
-    <div id="fullscreen-hint">แตะเพื่อขยายเต็มจอ</div>
-    
-    <button id="reload-btn" onclick="location.reload()">
-        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-    </button>
-
-    <div id="play-overlay">
-        <div class="icon-play">
-            <svg style="width:40px;height:40px;margin-left:5px" viewBox="0 0 24 24"><path d="M8,5.14V19.14L19,12.14L8,5.14Z" fill="#000"/></svg>
-        </div>
-        <p style="letter-spacing:2px; font-weight:300">พบความทรงจำแล้ว</p>
-        <p style="font-size:0.8rem; opacity:0.6">แตะเพื่อรับชม</p>
+        <button class="btn-start" id="start-btn" disabled>กำลังโหลด...</button>
     </div>
 
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
-        <div class="scan-overlay">
-            <div class="scan-frame">
-                <div class="scan-line"></div>
-            </div>
+        <div class="scan-frame"><div class="scan-line"></div></div>
+    </div>
+
+    <div id="play-overlay">
+        <div style="width:60px;height:60px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:15px">
+            <svg width="24" height="24" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <div id="scan-ui">
-            <div class="status-badge">
-                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                ส่องไปที่รูปภาพของคุณ
-            </div>
-        </div>
+        <span style="letter-spacing:1px; font-size:0.9rem">แตะเพื่อดูความทรงจำ</span>
     </div>
 
     <video id="video-player" src="Video.mp4" playsinline loop controls></video>
@@ -328,132 +132,64 @@
         const webcam = document.getElementById('webcam');
         const videoPlayer = document.getElementById('video-player');
         const playOverlay = document.getElementById('play-overlay');
-        const fullscreenHint = document.getElementById('fullscreen-hint');
-        const reloadBtn = document.getElementById('reload-btn');
-        const secondsSpan = document.getElementById('seconds');
-        const timerBox = document.getElementById('timer-box');
 
-        let model;
-        let targetFeatures;
+        let model, targetFeatures;
         let isDetected = false;
-        let cameraStream = null;
-        
-        const SIMILARITY_THRESHOLD = 0.60; 
-
-        let timeLeft = 5;
-        let countdownInterval;
-
-        function startTimer() {
-            countdownInterval = setInterval(() => {
-                if (timeLeft > 1) {
-                    timeLeft--;
-                    secondsSpan.innerText = timeLeft;
-                } else {
-                    secondsSpan.innerText = "ใกล้แล้ว...";
-                    clearInterval(countdownInterval);
-                }
-            }, 1000);
-        }
+        const THRESHOLD = 0.58;
 
         async function init() {
-            startTimer();
             try {
-                if (!targetImg.complete) {
-                    await new Promise(resolve => {
-                        targetImg.onload = resolve;
-                    });
-                }
-                
+                if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load();
                 const targetTensor = tf.browser.fromPixels(targetImg);
                 targetFeatures = model.infer(targetTensor, true);
                 targetTensor.dispose();
                 
-                clearInterval(countdownInterval);
-                timerBox.style.opacity = '0';
-                document.getElementById('main-desc').innerText = "ระบบพร้อมทำงาน";
-                startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
+                startBtn.innerText = "เริ่มสแกน";
                 startBtn.disabled = false;
-                
-            } catch (e) { 
-                document.getElementById('main-desc').innerText = "เกิดข้อผิดพลาด";
-                timerBox.innerText = "กรุณาตรวจสอบอินเทอร์เน็ต";
-            }
+            } catch (e) { startBtn.innerText = "ผิดพลาด"; }
         }
 
-        startBtn.addEventListener('click', () => {
+        startBtn.onclick = () => {
             overlay.style.opacity = '0';
-            setTimeout(() => {
+            setTimeout(async () => {
                 overlay.style.display = 'none';
-                openCamera();
-            }, 800);
-        });
-
-        async function openCamera() {
-            cameraContainer.style.display = 'block';
-            reloadBtn.style.display = 'flex';
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, 
-                    audio: false 
+                cameraContainer.style.display = 'block';
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, audio: false 
                 });
-                webcam.srcObject = cameraStream;
+                webcam.srcObject = stream;
                 videoPlayer.load();
-                requestAnimationFrame(predictLoop);
-            } catch (err) { alert("ไม่สามารถเข้าถึงกล้องได้"); }
-        }
-
-        async function predictLoop() {
-            if (!isDetected && model && webcam.readyState === 4) {
-                try {
-                    const similarity = tf.tidy(() => {
-                        const webcamTensor = tf.browser.fromPixels(webcam);
-                        const webcamFeatures = model.infer(webcamTensor, true);
-                        const a = tf.div(targetFeatures, tf.norm(targetFeatures));
-                        const b = tf.div(webcamFeatures, tf.norm(webcamFeatures));
-                        return tf.sum(tf.mul(a, b)).dataSync()[0];
-                    });
-
-                    if (similarity > SIMILARITY_THRESHOLD) {
-                        handleDetectionSuccess();
-                        return;
-                    }
-                } catch (e) {}
-                setTimeout(() => requestAnimationFrame(predictLoop), 200);
-            } else if (!isDetected) {
-                requestAnimationFrame(predictLoop);
-            }
-        }
-
-        function handleDetectionSuccess() {
-            isDetected = true;
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-            }
-            cameraContainer.style.display = 'none';
-            videoPlayer.style.display = 'block';
-            playOverlay.style.display = 'flex';
-
-            playOverlay.onclick = () => {
-                playOverlay.style.opacity = '0';
-                setTimeout(() => {
-                    playOverlay.style.display = 'none';
-                    videoPlayer.play();
-                    fullscreenHint.style.display = 'block';
-                    setTimeout(() => {
-                        fullscreenHint.style.opacity = '0';
-                    }, 5000);
-                }, 400);
-            };
-        }
-
-        fullscreenHint.onclick = () => {
-            if (videoPlayer.requestFullscreen) videoPlayer.requestFullscreen();
-            else if (videoPlayer.webkitEnterFullscreen) videoPlayer.webkitEnterFullscreen();
-            fullscreenHint.style.display = 'none';
+                requestAnimationFrame(predict);
+            }, 500);
         };
 
-        window.onload = init;
+        async function predict() {
+            if (!isDetected && webcam.readyState === 4) {
+                const score = tf.tidy(() => {
+                    const feat = model.infer(tf.browser.fromPixels(webcam), true);
+                    const a = tf.div(targetFeatures, tf.norm(targetFeatures));
+                    const b = tf.div(feat, tf.norm(feat));
+                    return tf.sum(tf.mul(a, b)).dataSync()[0];
+                });
+
+                if (score > THRESHOLD) {
+                    isDetected = true;
+                    webcam.srcObject.getTracks().forEach(t => t.stop());
+                    cameraContainer.style.display = 'none';
+                    videoPlayer.style.display = 'block';
+                    playOverlay.style.display = 'flex';
+                }
+                setTimeout(() => requestAnimationFrame(predict), 200);
+            } else if (!isDetected) requestAnimationFrame(predict);
+        }
+
+        playOverlay.onclick = () => {
+            playOverlay.style.display = 'none';
+            videoPlayer.play();
+        };
+
+        init();
     </script>
 </body>
 </html>
