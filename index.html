@@ -29,7 +29,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 1000;
             padding: 20px;
             text-align: center;
             transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
@@ -51,7 +51,7 @@
             width: 100%; height: 100%; 
             object-fit: cover; 
             opacity: 0.9;
-            transition: filter 0.5s ease;
+            transition: transform 1.2s ease, filter 0.5s ease;
         }
 
         .preview-scan-line {
@@ -96,6 +96,7 @@
         }
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
+        .btn-start:active { transform: scale(0.95); }
 
         /* ส่วนกล้องสแกน */
         #camera-container {
@@ -105,22 +106,13 @@
             z-index: 500;
         }
 
-        /* ป้องกันปุ่ม Play/Pause มาตรฐานบนกล้อง */
         #webcam { 
             width: 100%; height: 100%; object-fit: cover; 
             transition: filter 0.5s ease, transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
             transform-origin: center center;
+            pointer-events: none; /* ป้องกันการแตะโดนวิดีโอเพื่อไม่ให้ปุ่มโผล่ */
         }
-
-        /* เลเยอร์ป้องกันการแตะโดนวิดีโอกล้อง (กันปุ่มโผล่) */
-        #camera-interaction-blocker {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 510;
-            background: transparent;
-        }
-
-        /* ล้างปุ่มควบคุมมาตรฐานของเบราว์เซอร์ */
+        /* บล็อก controls มาตรฐานเบราว์เซอร์ */
         video::-webkit-media-controls { display:none !important; }
         video::-webkit-media-controls-enclosure { display:none !important; }
 
@@ -133,7 +125,7 @@
             border: 1.5px solid #000;
             border-radius: 8px;
             box-shadow: 0 0 0 2000px rgba(255,255,255,0.85);
-            z-index: 520;
+            z-index: 510;
             transition: all 0.5s ease;
             overflow: hidden;
             pointer-events: none;
@@ -152,7 +144,6 @@
             50% { transform: translateY(170px); opacity: 0.8; } 
         }
 
-        /* ปุ่มแฟลช */
         #flash-btn {
             position: absolute;
             top: 30px; right: 30px;
@@ -163,10 +154,11 @@
             z-index: 600; border: 1px solid #000; cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: popIn 0.4s ease-out;
         }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         #flash-btn.active { background: #000; color: #fff; }
 
-        /* ปุ่มซูม */
         .zoom-controls {
             position: absolute;
             bottom: 22%; left: 50%; transform: translateX(-50%);
@@ -174,11 +166,11 @@
         }
 
         .zoom-btn {
-            width: 40px; height: 40px;
-            background: rgba(255, 255, 255, 0.9);
+            width: 38px; height: 38px;
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 50%;
-            font-size: 0.7rem; font-weight: 600;
+            font-size: 0.65rem; font-weight: 600;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
@@ -192,12 +184,12 @@
             pointer-events: none; transition: opacity 0.4s ease;
         }
 
-        /* Video Container - แยกส่วนอย่างเด็ดขาด */
+        /* Video Container - เข้มงวดเรื่อง Z-index และการซ่อน */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            display: none !important; /* บังคับซ่อนจนกว่าจะติด */
-            z-index: 1000;
+            display: none !important;
+            z-index: 2000;
             background: #000;
         }
 
@@ -210,12 +202,28 @@
         .status-msg {
             position: absolute;
             bottom: 12%; width: 100%;
-            text-align: center; font-size: 0.9rem; color: #000;
-            padding: 0 20px; z-index: 550;
+            text-align: center; font-size: 0.9rem;
+            color: #000; letter-spacing: 0.5px;
+            font-weight: 400;
+            z-index: 550;
+            padding: 0 20px;
         }
 
-        .status-sub-msg { display: block; font-size: 0.75rem; color: #888; margin-top: 4px; }
-        .scan-indicator { position: absolute; top: 10px; right: 10px; width: 6px; height: 6px; border-radius: 50%; background: #eee; }
+        .status-sub-msg {
+            display: block;
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 4px;
+            font-weight: 300;
+        }
+
+        .scan-indicator {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #eee;
+        }
         .scan-active { background: #000 !important; }
     </style>
 </head>
@@ -234,14 +242,12 @@
 
     <!-- ส่วนกล้อง -->
     <div id="camera-container">
-        <!-- Interaction Blocker: บล็อกการสัมผัสวิดีโอกล้องโดยตรง -->
-        <div id="camera-interaction-blocker"></div>
-        
         <div id="flash-btn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
 
-        <video id="webcam" autoplay playsinline webkit-playsinline muted disablePictureInPicture></video>
+        <!-- บล็อก interaction ทั้งหมดบนตัวกล้อง -->
+        <video id="webcam" autoplay playsinline muted disablePictureInPicture webkit-playsinline></video>
         
         <div class="zoom-controls" id="zoom-ui">
             <div class="zoom-btn active" data-zoom="1.0">1x</div>
@@ -259,7 +265,7 @@
         </div>
     </div>
 
-    <!-- Video Container (Iframe Content) -->
+    <!-- Video Container -->
     <div id="video-container">
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
@@ -289,16 +295,19 @@
         let isFlashOn = false;
         let currentZoomLevel = 1.0;
         
-        const THRESHOLD = 0.88; 
-        const COLOR_MATCH_TOLERANCE = 0.20; 
+        // --- ค่าคงที่ความแม่นยำจากตัวอย่างที่ใช้งานได้ดี ---
+        const THRESHOLD = 0.90; 
+        const COLOR_MATCH_TOLERANCE = 0.18; 
         const BRIGHTNESS_THRESHOLD = 0.22; 
+        const VARIANCE_THRESHOLD = 0.08;
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 8; 
+        const CONFIDENCE_REQUIRED = 10; 
 
         async function init() {
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
+                
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
@@ -307,8 +316,12 @@
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) grids.push(img.slice([i*gh, j*gw, 0], [gh, gw, 3]).mean().div(255).dataSync()[0]);
                     return { feat, grids };
                 });
-                targetFeatures = results.feat; targetGridData = results.grids;
-                startBtn.innerText = "เริ่มสัมผัสความทรงจำ"; startBtn.disabled = false;
+                
+                targetFeatures = results.feat;
+                targetGridData = results.grids;
+                
+                startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
+                startBtn.disabled = false;
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
 
@@ -334,7 +347,10 @@
                                 zoomBtns.forEach(btn => {
                                     btn.onclick = () => applyHybridZoom(parseFloat(btn.dataset.zoom), btn);
                                 });
-                                setTimeout(() => { isReadyToAnalyze = true; requestAnimationFrame(predict); }, 2000);
+                                setTimeout(() => {
+                                    isReadyToAnalyze = true;
+                                    requestAnimationFrame(predict);
+                                }, 2000);
                             };
                         } catch (err) { subStatus.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
                     }, 500);
@@ -349,7 +365,10 @@
             zoomBtns.forEach(b => b.classList.remove('active'));
             el.classList.add('active');
             currentZoomLevel = val;
+            
+            // ใช้ Digital Scaling เพื่อให้ผู้ใช้เห็นผลทันที
             webcam.style.transform = `scale(${val})`;
+            
             if (caps.zoom) {
                 try {
                     const target = Math.max(caps.zoom.min, Math.min(val, caps.zoom.max));
@@ -373,23 +392,28 @@
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
+                    
+                    // ปรับพื้นที่ ROI ของ AI ให้ตรงตามระดับการซูม
                     const zoomFactor = currentZoomLevel >= 2.0 ? 0.35 : 0.42;
                     const roiW = w * zoomFactor; 
                     const roiH = roiW * (10/16);
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startY/h, startX/w, (startY+roiH)/h, (startX+roiW)/w]], [0], [224, 224]);
+                    
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
+                    
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) currentGrids.push(cImg.slice([i*74, j*74, 0], [74, 74, 3]).mean().div(255).dataSync()[0]);
+                    
                     const brightness = currentGrids.reduce((a, b) => a + b) / 9;
                     let diffSum = 0;
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
-                    const mean = brightness;
-                    const variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
-                    return { sim, colorMatch: (diffSum / 9) < COLOR_MATCH_TOLERANCE, hasTexture: variance > 0.07, brightness };
+                    const variance = currentGrids.reduce((a, b) => a + Math.pow(b - brightness, 2)) / 9;
+
+                    return { sim, colorMatch: (diffSum / 9) < COLOR_MATCH_TOLERANCE, hasTexture: variance > VARIANCE_THRESHOLD, brightness };
                 });
 
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
@@ -399,7 +423,7 @@
                 } else {
                     subStatus.style.color = "#000";
                     if (!check.hasTexture) subStatus.innerText = "กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน";
-                    else if (check.sim < 0.65) subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
+                    else if (check.sim < 0.7) subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
                     else if (check.sim < THRESHOLD) subStatus.innerText = "เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่";
                     else subStatus.innerText = "กำลังวิเคราะห์ความทรงจำ...";
                 }
@@ -430,18 +454,15 @@
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
                 
-                // แสดงส่วนวิดีโอ (หลังสแกนติดเท่านั้น)
+                // ปลดล็อกการแสดงวิดีโอ (หลังสแกนติดเท่านั้น)
                 videoContainer.classList.add('active');
                 
-                // สร้าง Iframe ใหม่สดๆ เพื่อความสะอาด
-                const iframe = document.createElement('iframe');
-                iframe.id = "video-iframe";
-                iframe.src = PREVIEW_URL;
-                iframe.allow = "autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture";
-                iframe.allowFullscreen = true;
-
-                iframeTarget.innerHTML = '';
-                iframeTarget.appendChild(iframe);
+                iframeTarget.innerHTML = `
+                    <iframe 
+                        src="${PREVIEW_URL}" 
+                        allow="autoplay; fullscreen" 
+                        allowfullscreen>
+                    </iframe>`;
             }, 400);
         }
 
