@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory 65</title>
+    <title>Memory Lens AI</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -58,15 +58,21 @@
 
         .preview-scan-line {
             position: absolute;
-            top: -100%; left: 0;
-            width: 100%; height: 100%;
-            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.1), transparent);
-            border-bottom: 2px solid #000;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: #000;
             z-index: 2;
             display: none;
+            /* ใช้ transform แทน top เพื่อความลื่นไหล */
+            will-change: transform;
         }
 
-        @keyframes scanning { 0% { top: -100%; } 100% { top: 100%; } }
+        @keyframes scanning { 
+            0% { transform: translateY(0); opacity: 0; } 
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(180px); opacity: 0; } 
+        }
         
         .analyzing .preview-scan-line { 
             display: block; 
@@ -112,16 +118,25 @@
             box-shadow: 0 0 0 2000px rgba(255,255,255,0.75);
             z-index: 5;
             transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            overflow: hidden;
         }
 
         .scan-line {
             position: absolute;
-            top: 0; width: 100%; height: 2px;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
             background: #000;
-            animation: scan 2.8s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            /* ใช้ transform บังคับใช้ GPU เพื่อแก้ปัญหากระตุก */
+            will-change: transform;
+            animation: scanHardware 2.5s ease-in-out infinite;
         }
 
-        @keyframes scan { 0%, 100% { top: 10%; opacity: 0.2; } 50% { top: 90%; opacity: 1; } }
+        @keyframes scanHardware { 
+            0% { transform: translateY(20px); opacity: 0.3; } 
+            50% { transform: translateY(180px); opacity: 1; } 
+            100% { transform: translateY(20px); opacity: 0.3; } 
+        }
 
         /* เอฟเฟกต์ตอนสแกนติด */
         #success-flash {
@@ -250,7 +265,7 @@
         
         // ความเข้มงวดอัจฉริยะ (Extreme Threshold)
         const THRESHOLD = 0.94; 
-        const VARIANCE_THRESHOLD = 0.08; // ต้องมีสีที่หลากหลายพอ ไม่ใช่สีดำเรียบๆ แบบรีโมท
+        const VARIANCE_THRESHOLD = 0.08; 
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 12;
 
@@ -268,12 +283,10 @@
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
-                // เรียนรู้โครงสร้างรูปถ่ายเป้าหมาย (3x3 Grid Color Analysis)
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
                     
-                    // วิเคราะห์ Grid 3x3 เพื่อป้องกันรีโมทหรือวัตถุสีเดียว
                     const h = img.shape[0], w = img.shape[1];
                     const gridH = Math.floor(h/3), gridW = Math.floor(w/3);
                     let grids = [];
@@ -332,12 +345,10 @@
                     
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
-                    // 1. ตรวจสอบ MobileNet Similarity
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
 
-                    // 2. ตรวจสอบ Color Distribution (ป้องกันวัตถุสีเรียบ)
-                    const gridSide = 74; // 224 / 3
+                    const gridSide = 74; 
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
                     for(let i=0; i<3; i++){
@@ -347,14 +358,13 @@
                         }
                     }
 
-                    // คำนวณความต่างของสีเฉลี่ย และ Variance ของสี
                     let diffSum = 0;
                     let mean = currentGrids.reduce((a, b) => a + b) / 9;
                     let variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
 
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
                     const colorMatch = (diffSum / 9) < 0.15;
-                    const hasTexture = variance > VARIANCE_THRESHOLD; // ปฏิเสธวัตถุสีเรียบ (รีโมท/ผนัง)
+                    const hasTexture = variance > VARIANCE_THRESHOLD; 
 
                     return { sim, colorMatch, hasTexture };
                 });
@@ -376,11 +386,11 @@
 
         function triggerSuccess() {
             isDetected = true;
-            // เอฟเฟกต์แสงวาบ
             successFlash.style.opacity = '1';
             webcam.style.filter = 'brightness(2) contrast(0.5) blur(10px)';
-            document.getElementById('scan-frame').style.transform = 'translate(-50%, -50%) scale(0.5)';
-            document.getElementById('scan-frame').style.opacity = '0';
+            const frame = document.getElementById('scan-frame');
+            frame.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            frame.style.opacity = '0';
 
             setTimeout(() => {
                 if (webcam.srcObject) webcam.srcObject.getTracks().forEach(t => t.stop());
