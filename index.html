@@ -123,7 +123,7 @@
             transform: translate(-50%, -50%);
             width: 75vw; aspect-ratio: 16 / 10;
             max-width: 300px;
-            border: 1px solid rgba(0,0,0,0.3);
+            border: 1.5px solid #000;
             border-radius: 8px;
             box-shadow: 0 0 0 2000px rgba(255,255,255,0.85);
             z-index: 5;
@@ -144,6 +144,25 @@
             0%, 100% { transform: translateY(10px); opacity: 0.2; } 
             50% { transform: translateY(170px); opacity: 0.8; } 
         }
+
+        /* ปุ่มแฟลช */
+        #flash-btn {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            border: 1px solid #000;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #flash-btn.active { background: #000; color: #fff; }
 
         #success-flash {
             position: fixed;
@@ -200,10 +219,20 @@
         .status-msg {
             position: absolute;
             bottom: 12%; width: 100%;
-            text-align: center; font-size: 0.8rem;
-            color: #888; letter-spacing: 1px;
-            font-weight: 300;
+            text-align: center; font-size: 0.9rem;
+            color: #000; letter-spacing: 0.5px;
+            font-weight: 400;
             z-index: 10;
+            padding: 0 20px;
+            transition: all 0.3s ease;
+        }
+
+        .status-sub-msg {
+            display: block;
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 4px;
+            font-weight: 300;
         }
 
         .scan-indicator {
@@ -234,12 +263,18 @@
 
     <!-- ส่วนกล้อง -->
     <div id="camera-container">
+        <div id="flash-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
         <video id="webcam" autoplay playsinline></video>
         <div class="scan-frame" id="scan-frame">
             <div class="scan-indicator" id="lock-indicator"></div>
             <div class="scan-line"></div>
         </div>
-        <div class="status-msg" id="status-display">ส่องไปที่รูปภาพความทรงจำ</div>
+        <div class="status-msg" id="status-display">
+            ส่องไปที่รูปภาพความทรงจำ
+            <span class="status-sub-msg" id="sub-status">กำลังเริ่มต้นระบบ...</span>
+        </div>
     </div>
 
     <!-- หน้าจอพบความทรงจำ -->
@@ -271,19 +306,23 @@
         const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
         const statusDisplay = document.getElementById('status-display');
+        const subStatus = document.getElementById('sub-status');
+        const flashBtn = document.getElementById('flash-btn');
         const fsHint = document.getElementById('fullscreen-hint');
         const successFlash = document.getElementById('success-flash');
 
         let model, targetFeatures, targetGridData;
         let isDetected = false;
         let isReadyToAnalyze = false;
+        let videoStream = null;
+        let isFlashOn = false;
         
-        // --- ปรับจูนความพอดี (Balanced Intelligence) ---
-        const THRESHOLD = 0.88; // ลดความเข้มงวดลงเล็กน้อยเพื่อให้สแกนติดง่ายขึ้น
-        const VARIANCE_THRESHOLD = 0.07; 
-        const COLOR_MATCH_TOLERANCE = 0.22; // ผ่อนปรนค่าความเพี้ยนของสี
+        const THRESHOLD = 0.90; 
+        const VARIANCE_THRESHOLD = 0.08; 
+        const COLOR_MATCH_TOLERANCE = 0.18; 
+        const BRIGHTNESS_THRESHOLD = 0.25; // ต่ำกว่านี้แปลว่ามืดเกินไป
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 8; // ใช้จำนวนเฟรมน้อยลงเพื่อให้การสแกนรวดเร็วขึ้น
+        const CONFIDENCE_REQUIRED = 10; 
 
         let dots = 0;
         const dotTimer = setInterval(() => {
@@ -335,22 +374,38 @@
                         overlay.style.display = 'none';
                         cameraContainer.style.display = 'block';
                         try {
-                            const stream = await navigator.mediaDevices.getUserMedia({ 
+                            videoStream = await navigator.mediaDevices.getUserMedia({ 
                                 video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
                             });
-                            webcam.srcObject = stream;
+                            webcam.srcObject = videoStream;
                             webcam.onloadedmetadata = () => {
                                 videoPlayer.src = VIDEO_URL;
                                 videoPlayer.load();
+                                
+                                // ตรวจสอบความสามารถในการเปิดแฟลช
+                                const track = videoStream.getVideoTracks()[0];
+                                const caps = track.getCapabilities();
+                                if (caps.torch) flashBtn.style.display = 'flex';
+
                                 setTimeout(() => {
                                     isReadyToAnalyze = true;
                                     requestAnimationFrame(predict);
-                                }, 1500);
+                                }, 2000);
                             };
-                        } catch (err) { statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
+                        } catch (err) { subStatus.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
                     }, 500);
                 }, 800); 
             }, 1200);
+        };
+
+        flashBtn.onclick = async () => {
+            if (!videoStream) return;
+            const track = videoStream.getVideoTracks()[0];
+            try {
+                isFlashOn = !isFlashOn;
+                await track.applyConstraints({ advanced: [{ torch: isFlashOn }] });
+                flashBtn.classList.toggle('active', isFlashOn);
+            } catch (e) { console.error("Flash error:", e); }
         };
 
         async function predict() {
@@ -358,11 +413,18 @@
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
-                    // ขยายขนาดพื้นที่วิเคราะห์ (ROI) ให้กว้างขึ้นเพื่อให้ไม่ต้องจ่อรูปเป๊ะเกินไป
-                    const size = Math.min(h, w) * 0.65;
-                    const startH = (h - size) / 2, startW = (w - size) / 2;
                     
-                    const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
+                    const roiW = w * 0.45;
+                    const roiH = roiW * (10/16);
+                    const startY = (h - roiH) / 2;
+                    const startX = (w - roiW) / 2;
+                    
+                    const cropped = tf.image.cropAndResize(
+                        full.expandDims(0).toFloat(), 
+                        [[startY/h, startX/w, (startY+roiH)/h, (startX+roiW)/w]], 
+                        [0], 
+                        [224, 224]
+                    );
                     
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
@@ -377,6 +439,7 @@
                         }
                     }
 
+                    const brightness = currentGrids.reduce((a, b) => a + b) / 9;
                     let diffSum = 0;
                     let mean = currentGrids.reduce((a, b) => a + b) / 9;
                     let variance = currentGrids.reduce((a, b) => a + Math.pow(b - mean, 2)) / 9;
@@ -385,8 +448,26 @@
                     const colorMatch = (diffSum / 9) < COLOR_MATCH_TOLERANCE;
                     const hasTexture = variance > VARIANCE_THRESHOLD; 
 
-                    return { sim, colorMatch, hasTexture };
+                    return { sim, colorMatch, hasTexture, brightness };
                 });
+
+                // --- Real-time Guidance Logic ---
+                if (check.brightness < BRIGHTNESS_THRESHOLD) {
+                    subStatus.innerText = "สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง";
+                    subStatus.style.color = "#ff3b30";
+                } else if (!check.hasTexture) {
+                    subStatus.innerText = "กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน";
+                    subStatus.style.color = "#888";
+                } else if (check.sim < 0.7) {
+                    subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
+                    subStatus.style.color = "#888";
+                } else if (check.sim < THRESHOLD || !check.colorMatch) {
+                    subStatus.innerText = "เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่";
+                    subStatus.style.color = "#000";
+                } else {
+                    subStatus.innerText = "กำลังวิเคราะห์ความทรงจำ...";
+                    subStatus.style.color = "#000";
+                }
 
                 if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
                     detectionConfidence++;
@@ -396,8 +477,7 @@
                         return;
                     }
                 } else {
-                    // ลดคะแนนลงทีละนิดแทนการรีเซ็ตเป็น 0 ทันที เพื่อให้การสแกนไหลลื่นขึ้นในที่แสงน้อย
-                    detectionConfidence = Math.max(0, detectionConfidence - 1);
+                    detectionConfidence = 0;
                     lockIndicator.classList.remove('scan-active');
                 }
                 setTimeout(() => requestAnimationFrame(predict), 100);
@@ -411,9 +491,10 @@
             const frame = document.getElementById('scan-frame');
             frame.style.transform = 'translate(-50%, -50%) scale(0.8)';
             frame.style.opacity = '0';
+            subStatus.innerText = "ปลดล็อกความทรงจำสำเร็จ";
 
             setTimeout(() => {
-                if (webcam.srcObject) webcam.srcObject.getTracks().forEach(t => t.stop());
+                if (videoStream) videoStream.getTracks().forEach(t => t.stop());
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
                 
