@@ -112,28 +112,27 @@
             75% { content: '...'; }
         }
 
-        /* --- ลำดับแอนิเมชันใหม่ (รวมเวลา 3.2 วินาที) --- */
+        /* --- ปรับปรุงลำดับแอนิเมชันใหม่ตามที่กำหนด (รวมเวลา 2.7 วินาที) --- */
         @keyframes complexTransition {
-            /* 0s - 1.5s: ช่วงสแกน (47% ของเวลาทั้งหมด) */
-            0%, 47% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            /* 0s - 1.5s: ช่วงสแกน (55.5% ของเวลาทั้งหมด) */
+            0%, 55.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
             
-            /* 1.5s - 2.0s: หน่วงเวลา 0.5 วิ (47% - 63%) */
+            /* 1.5s - 1.7s: หน่วงเวลา 0.2 วิ (55.5% - 63%) */
             63% { filter: brightness(1); transform: scale(1); }
             
-            /* 2.0s - 2.2s: กระพริบ 1 ที (63% - 69%) */
-            66% { filter: brightness(3); transform: scale(1.02); }
-            69% { filter: brightness(1); transform: scale(1); }
+            /* 1.7s - 2.1s: กระพริบ 1 ที ในเวลา 0.4 วิ (63% - 77.8%) */
+            70.4% { filter: brightness(2.8); transform: scale(1.03); } /* จุดสูงสุดของการกระพริบ */
+            77.8% { filter: brightness(1); transform: scale(1); }
             
-            /* 2.2s - 2.7s: หน่วงเวลา 0.5 วิ (69% - 84%) */
-            84% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            /* 2.1s - 2.2s: หน่วงเวลา 0.1 วิ (77.8% - 81.5%) */
+            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
             
-            /* 2.7s - 3.2s: ซูมนิดเดียวแล้วจางหาย (84% - 100%) */
+            /* 2.2s - 2.7s: ซูมนิดเดียวแล้วจางหาย (81.5% - 100%) */
             100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; }
         }
 
         .start-animating .preview-box {
-            /* แอนิเมชันหลักคุม Brightness และ Scale ของทั้งกล่อง */
-            animation: complexTransition 3.2s ease-in-out forwards;
+            animation: complexTransition 2.7s ease-in-out forwards;
         }
 
         .start-animating .grayscale-overlay {
@@ -433,13 +432,8 @@
         }
 
         startBtn.onclick = () => {
-            // เริ่มแอนิเมชันลำดับขั้นตามคำขอ
-            // 1. สแกนพร้อมขาวดำ (1.5s)
-            // 2. หน่วง (0.5s)
-            // 3. กระพริบ 1 ที (0.2s)
-            // 4. หน่วง (0.5s)
-            // 5. ซูม/จาง (0.5s)
-            // รวมเวลาประมาณ 3.2 วินาที
+            // เริ่มแอนิเมชันลำดับขั้นตามคำขอใหม่
+            // รวมเวลาทั้งหมด 2.7 วินาที
             overlay.classList.add('start-animating');
             startBtn.disabled = true;
             
@@ -464,7 +458,7 @@
                         };
                     } catch (err) { updateStatus('ไม่สามารถเข้าถึงกล้องได้', '#ff3b30'); }
                 }, 500);
-            }, 3200); // หน่วงเวลาให้แอนิเมชันเล่นครบถ้วน
+            }, 2700); // หน่วงเวลาตามรวมความยาวแอนิเมชันใหม่
         };
 
         async function applyAdaptiveZoom(val, el) {
