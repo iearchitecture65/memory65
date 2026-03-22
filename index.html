@@ -204,29 +204,37 @@
             border: 0;
         }
 
-        /* ปุ่มเต็มจอแบบมินิมอล */
+        /* ปุ่มเต็มจอแบบเด้งลงมาจากด้านบนกึ่งกลาง */
         #fullscreen-toggle {
             position: absolute;
-            bottom: 30px;
-            right: 20px;
+            top: -80px; /* ซ่อนไว้เหนือหน้าจอ */
+            left: 50%;
+            transform: translateX(-50%); /* จัดกึ่งกลางแนวนอน */
             background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             color: #fff;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 50px;
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             z-index: 1600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-weight: 300;
             letter-spacing: 0.5px;
-            transition: all 0.3s ease;
+            transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* เอฟเฟกต์การเด้ง */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        #fullscreen-toggle:active { transform: scale(0.9); background: rgba(255,255,255,0.4); }
+        
+        /* คลาสสำหรับแสดงปุ่ม */
+        #fullscreen-toggle.show {
+            top: 30px; /* เลื่อนลงมาตำแหน่งที่มองเห็น */
+        }
+
+        #fullscreen-toggle:active { transform: translateX(-50%) scale(0.95); background: rgba(255,255,255,0.4); }
 
         .status-msg {
             position: absolute;
@@ -498,6 +506,12 @@
                         allowfullscreen>
                     </iframe>`;
                 videoContainer.style.display = 'block';
+
+                // --- ส่วนที่เพิ่มเข้ามาใหม่: เด้งปุ่มเต็มจอลงมาจากด้านบนหลังจาก 2 วินาที ---
+                setTimeout(() => {
+                    fsToggle.classList.add('show');
+                }, 2000);
+
             }, 400);
         };
 
@@ -520,7 +534,6 @@
             }
         };
 
-        // ตรวจสอบสถานะ fullscreen เพื่อเปลี่ยนข้อความปุ่ม
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
                 fsToggle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6M9 21H3v-6M21 15v6h-6M3 9V3h6"/></svg> ดูแบบเต็มจอ`;
