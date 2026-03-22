@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Memory Lens</title>
     
-    <!-- เปลี่ยนเป็นฟอนต์ Kanit สไตล์มินิมอล ไม่มีหัว -->
+    <!-- ฟอนต์ Kanit สไตล์มินิมอล ไม่มีหัว -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
@@ -73,6 +73,7 @@
             border: 2px solid #000;
             border-radius: 12px;
             box-shadow: 0 0 0 1000px rgba(255,255,255,0.7);
+            z-index: 5;
         }
 
         .scan-line {
@@ -162,7 +163,7 @@
     <div id="camera-container">
         <video id="webcam" autoplay playsinline></video>
         <div class="scan-frame"><div class="scan-line"></div></div>
-        <div class="status-msg">ส่องไปที่รูปถ่ายของคุณ</div>
+        <div class="status-msg">วางรูปถ่ายให้พอดีกับกรอบ</div>
     </div>
 
     <div id="play-overlay">
@@ -186,13 +187,20 @@
 
         let model, targetFeatures;
         let isDetected = false;
-        const THRESHOLD = 0.58; 
+        // ปรับ Threshold ให้สูงขึ้นเล็กน้อยเพื่อให้แม่นยำขึ้นเมื่อใช้การ Crop
+        const THRESHOLD = 0.62; 
 
         async function init() {
             try {
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
-                const targetTensor = tf.browser.fromPixels(targetImg);
+                
+                // เตรียมภาพเป้าหมาย: ประมวลผลให้ AI จำได้ฉลาดที่สุด
+                const targetTensor = tf.tidy(() => {
+                    const img = tf.browser.fromPixels(targetImg);
+                    return tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1);
+                });
+                
                 targetFeatures = model.infer(targetTensor, true);
                 targetTensor.dispose();
                 
@@ -219,7 +227,24 @@
         async function predict() {
             if (!isDetected && webcam.readyState === 4) {
                 const score = tf.tidy(() => {
-                    const feat = model.infer(tf.browser.fromPixels(webcam), true);
+                    // ดึงภาพจากเว็บแคม
+                    const fullImg = tf.browser.fromPixels(webcam);
+                    
+                    // คำนวณพื้นที่ที่จะสแกน (ROI) ให้ตรงกับกรอบสีดำกลางจอ
+                    // เนื่องจากวิดีโอเป็น object-fit: cover เราจะสกัดภาพจากส่วนกลาง
+                    const [h, w] = fullImg.shape;
+                    const size = Math.min(h, w) * 0.8;
+                    const startH = (h - size) / 2;
+                    const startW = (w - size) / 2;
+                    
+                    const croppedImg = tf.image.cropAndResize(
+                        fullImg.expandDims(0).toFloat(),
+                        [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]],
+                        [0],
+                        [224, 224]
+                    ).div(127.5).sub(1);
+
+                    const feat = model.infer(croppedImg, true);
                     const a = tf.div(targetFeatures, tf.norm(targetFeatures));
                     const b = tf.div(feat, tf.norm(feat));
                     return tf.sum(tf.mul(a, b)).dataSync()[0];
@@ -234,7 +259,7 @@
                     videoPlayer.style.display = 'block';
                     playOverlay.style.display = 'flex';
                 }
-                setTimeout(() => requestAnimationFrame(predict), 200);
+                setTimeout(() => requestAnimationFrame(predict), 150);
             } else if (!isDetected) requestAnimationFrame(predict);
         }
 
