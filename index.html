@@ -206,7 +206,7 @@
             <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
         </div>
-        <button class="btn-start" id="start-btn" disabled>เตรียมระบบ AI...</button>
+        <button class="btn-start" id="start-btn" disabled>กำลังรอ</button>
     </div>
 
     <div id="fullscreen-hint">
@@ -249,9 +249,10 @@
         let isDetected = false;
         let isReadyToAnalyze = false;
         
-        const THRESHOLD = 0.70; 
+        // เพิ่มความเข้มงวดสูงสุดเพื่อป้องกันการตรวจจับผิดพลาด
+        const THRESHOLD = 0.85; 
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 10;
+        const CONFIDENCE_REQUIRED = 25; // ต้องการการยืนยันที่ยาวนานและนิ่งขึ้น
 
         async function init() {
             try {
@@ -289,7 +290,6 @@
                                 facingMode: "environment", 
                                 width: { ideal: 1280 }, 
                                 height: { ideal: 720 },
-                                // ขอซูมเบื้องต้นหากรองรับ
                                 zoom: 1.2
                             }, 
                             audio: false 
@@ -300,7 +300,6 @@
                         const track = stream.getVideoTracks()[0];
                         const capabilities = track.getCapabilities();
                         
-                        // พยายามตั้งค่า Zoom ที่ตัวเลนส์จริง (สำหรับเครื่องที่รองรับ)
                         if (capabilities.zoom) {
                             track.applyConstraints({
                                 advanced: [{ zoom: Math.min(capabilities.zoom.max, 1.3) }]
@@ -309,11 +308,12 @@
                         
                         webcam.onloadedmetadata = () => {
                             videoPlayer.load();
+                            // เพิ่มระยะเวลารอคอยเพื่อให้เลนส์กล้องนิ่งจริงๆ
                             setTimeout(() => {
                                 isReadyToAnalyze = true;
                                 statusDisplay.innerText = "วางรูปถ่ายให้พอดีกับกรอบ";
                                 requestAnimationFrame(predict);
-                            }, 2000);
+                            }, 3000);
                         };
                     } catch (err) {
                         statusDisplay.innerText = "ไม่สามารถเข้าถึงกล้องได้";
@@ -328,9 +328,8 @@
                     const fullImg = tf.browser.fromPixels(webcam);
                     const [h, w] = fullImg.shape;
                     
-                    // ปรับ ROI ให้เจาะจงมากขึ้น (Digital Zoom สำหรับ AI)
-                    // ลดขนาด size ลงจาก 0.75 เป็น 0.6 เพื่อบีบพื้นที่สแกนให้แคบลงและซูมขึ้น
-                    const size = Math.min(h, w) * 0.6;
+                    // บีบพื้นที่ ROI ให้เล็กลงเพื่อความแม่นยำสูง
+                    const size = Math.min(h, w) * 0.5;
                     const startH = (h - size) / 2;
                     const startW = (w - size) / 2;
                     
@@ -362,11 +361,12 @@
                         return;
                     }
                 } else {
-                    detectionConfidence = Math.max(0, detectionConfidence - 1);
+                    // หากคะแนนตกลงแม้เพียงนิดเดียว ให้รีเซ็ตคะแนนสะสมเป็น 0 ทันที
+                    detectionConfidence = 0;
                     lockIndicator.classList.remove('scan-active');
                 }
                 
-                setTimeout(() => requestAnimationFrame(predict), 100);
+                setTimeout(() => requestAnimationFrame(predict), 80);
             } else if (!isDetected) {
                 requestAnimationFrame(predict);
             }
