@@ -145,7 +145,6 @@
             50% { transform: translateY(170px); opacity: 0.8; } 
         }
 
-        /* ปุ่มแฟลช */
         #flash-btn {
             position: absolute;
             top: 30px;
@@ -244,6 +243,18 @@
             transition: background 0.2s;
         }
         .scan-active { background: #000 !important; }
+        
+        #error-fallback {
+            display: none;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #ff3b30;
+            color: white;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            font-weight: 400;
+        }
     </style>
 </head>
 <body>
@@ -284,16 +295,19 @@
         </div>
         <span style="font-weight:400; font-size:0.95rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
         <span style="font-size:0.75rem; opacity:0.4; margin-top:6px">แตะเพื่อเปิดรับชม</span>
+        <a id="error-fallback" href="#">เปิดในเบราว์เซอร์ (หากวิดีโอไม่โหลด)</a>
     </div>
 
     <!-- Video Container -->
     <div id="video-container">
-        <video id="video-player" playsinline loop controls crossorigin="anonymous"></video>
+        <video id="video-player" playsinline loop controls muted crossorigin="anonymous"></video>
     </div>
 
     <script>
         const DRIVE_ID = "1myp5J_EBbO9jZJyTk-5kid2Qy5aBpRHQ";
-        const VIDEO_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_ID}`;
+        // ลิงก์ตรงสำหรับดาวน์โหลด (uc) และลิงก์สำหรับดูพรีวิว (view)
+        const DIRECT_VIDEO_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_ID}`;
+        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/view`;
 
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
@@ -310,6 +324,7 @@
         const flashBtn = document.getElementById('flash-btn');
         const fsHint = document.getElementById('fullscreen-hint');
         const successFlash = document.getElementById('success-flash');
+        const errorFallback = document.getElementById('error-fallback');
 
         let model, targetFeatures, targetGridData;
         let isDetected = false;
@@ -320,7 +335,7 @@
         const THRESHOLD = 0.90; 
         const VARIANCE_THRESHOLD = 0.08; 
         const COLOR_MATCH_TOLERANCE = 0.18; 
-        const BRIGHTNESS_THRESHOLD = 0.25; // ต่ำกว่านี้แปลว่ามืดเกินไป
+        const BRIGHTNESS_THRESHOLD = 0.25; 
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 10; 
 
@@ -358,8 +373,17 @@
                 startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
                 startBtn.disabled = false;
                 clearInterval(dotTimer);
+                
+                // ตั้งค่าลิงก์สำรอง
+                errorFallback.href = PREVIEW_URL;
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
+
+        // ตรวจสอบว่าวิดีโอโหลดได้หรือไม่
+        videoPlayer.onerror = () => {
+            console.error("Video failed to load.");
+            errorFallback.style.display = 'block';
+        };
 
         startBtn.onclick = () => {
             previewContainer.classList.add('analyzing');
@@ -379,10 +403,9 @@
                             });
                             webcam.srcObject = videoStream;
                             webcam.onloadedmetadata = () => {
-                                videoPlayer.src = VIDEO_URL;
+                                videoPlayer.src = DIRECT_VIDEO_URL;
                                 videoPlayer.load();
                                 
-                                // ตรวจสอบความสามารถในการเปิดแฟลช
                                 const track = videoStream.getVideoTracks()[0];
                                 const caps = track.getCapabilities();
                                 if (caps.torch) flashBtn.style.display = 'flex';
@@ -451,7 +474,6 @@
                     return { sim, colorMatch, hasTexture, brightness };
                 });
 
-                // --- Real-time Guidance Logic ---
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
                     subStatus.innerText = "สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง";
                     subStatus.style.color = "#ff3b30";
@@ -503,12 +525,29 @@
             }, 400);
         }
 
-        playOverlay.onclick = () => {
+        playOverlay.onclick = (e) => {
+            // หากกดปุ่มสีแดง (Fallback) ให้ทำงานตามลิงก์
+            if (e.target.id === 'error-fallback') return;
+
             playOverlay.style.opacity = '0';
             setTimeout(() => {
                 playOverlay.style.display = 'none';
                 videoContainer.style.display = 'block';
-                videoPlayer.play();
+                
+                // พยายามเล่นวิดีโอ (ปิดเสียงก่อนเพื่อให้เล่นได้ชัวร์)
+                videoPlayer.muted = true;
+                const playPromise = videoPlayer.play();
+
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // เล่นได้สำเร็จ ค่อยเปิดเสียง (หากเบราว์เซอร์ยอม)
+                        videoPlayer.muted = false;
+                    }).catch(error => {
+                        console.log("Auto-play blocked or link error. Redirecting...");
+                        // ถ้าเล่นไม่ได้เลย ให้เด้งไปที่ Google Drive Preview ทันที
+                        window.location.href = PREVIEW_URL;
+                    });
+                }
 
                 setTimeout(() => {
                     fsHint.classList.add('show');
