@@ -145,22 +145,26 @@
             50% { transform: translateY(170px); opacity: 0.8; } 
         }
 
+        /* ปุ่มแฟลช (จะเด้งขึ้นมาเมื่อมืด) */
         #flash-btn {
             position: absolute;
             top: 30px;
             right: 30px;
             width: 50px;
             height: 50px;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 50%;
-            display: none;
+            display: none; /* เริ่มต้นซ่อนไว้ */
             align-items: center;
             justify-content: center;
             z-index: 100;
             border: 1px solid #000;
             cursor: pointer;
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: popIn 0.4s ease-out;
         }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         #flash-btn.active { background: #000; color: #fff; }
 
         #success-flash {
@@ -187,6 +191,7 @@
             transition: opacity 0.6s ease;
         }
 
+        /* Video Container (Iframe Preview Mode) */
         #video-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -194,26 +199,10 @@
             background: #000;
         }
         
-        #video-player {
+        #video-container iframe {
             width: 100%; height: 100%;
-            object-fit: contain;
+            border: 0;
         }
-
-        #fullscreen-hint {
-            position: fixed;
-            top: -100px; left: 50%;
-            transform: translateX(-50%);
-            background: #fff; color: #000;
-            padding: 8px 20px; border-radius: 100px;
-            font-size: 0.8rem; font-weight: 400;
-            z-index: 3500; display: flex;
-            align-items: center; gap: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border: 1px solid #000;
-            transition: top 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #fullscreen-hint.show { top: 30px; }
 
         .status-msg {
             position: absolute;
@@ -223,7 +212,6 @@
             font-weight: 400;
             z-index: 10;
             padding: 0 20px;
-            transition: all 0.3s ease;
         }
 
         .status-sub-msg {
@@ -240,28 +228,15 @@
             width: 6px; height: 6px;
             border-radius: 50%;
             background: #eee;
-            transition: background 0.2s;
         }
         .scan-active { background: #000 !important; }
-        
-        #error-fallback {
-            display: none;
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #ff3b30;
-            color: white;
-            border-radius: 50px;
-            font-size: 0.8rem;
-            text-decoration: none;
-            font-weight: 400;
-        }
     </style>
 </head>
 <body>
 
     <div id="success-flash"></div>
 
-    <!-- หน้าจอหลัก -->
+    <!-- หน้าจอเริ่มต้น -->
     <div id="overlay">
         <div class="preview-box" id="preview-container">
             <div class="preview-scan-line"></div>
@@ -270,10 +245,9 @@
         <button class="btn-start" id="start-btn" disabled>กำลังรอ...</button>
     </div>
 
-    <div id="fullscreen-hint">แตะวิดีโอเพื่อดูแบบเต็มจอ</div>
-
     <!-- ส่วนกล้อง -->
     <div id="camera-container">
+        <!-- ปุ่มเปิดแฟลช (สายฟ้า) -->
         <div id="flash-btn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
@@ -284,7 +258,7 @@
         </div>
         <div class="status-msg" id="status-display">
             ส่องไปที่รูปภาพความทรงจำ
-            <span class="status-sub-msg" id="sub-status">กำลังเริ่มต้นระบบ...</span>
+            <span class="status-sub-msg" id="sub-status">กำลังเตรียมระบบ AI...</span>
         </div>
     </div>
 
@@ -295,19 +269,15 @@
         </div>
         <span style="font-weight:400; font-size:0.95rem; letter-spacing:1px">พบความทรงจำแล้ว</span>
         <span style="font-size:0.75rem; opacity:0.4; margin-top:6px">แตะเพื่อเปิดรับชม</span>
-        <a id="error-fallback" href="#">เปิดในเบราว์เซอร์ (หากวิดีโอไม่โหลด)</a>
     </div>
 
-    <!-- Video Container -->
-    <div id="video-container">
-        <video id="video-player" playsinline loop controls muted crossorigin="anonymous"></video>
-    </div>
+    <!-- Container สำหรับ Iframe Google Drive -->
+    <div id="video-container"></div>
 
     <script>
+        // ใช้รูปแบบ /preview สำหรับความเสถียรสูงสุด
         const DRIVE_ID = "1myp5J_EBbO9jZJyTk-5kid2Qy5aBpRHQ";
-        // ลิงก์ตรงสำหรับดาวน์โหลด (uc) และลิงก์สำหรับดูพรีวิว (view)
-        const DIRECT_VIDEO_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_ID}`;
-        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/view`;
+        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
 
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
@@ -316,15 +286,11 @@
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoContainer = document.getElementById('video-container');
-        const videoPlayer = document.getElementById('video-player');
         const playOverlay = document.getElementById('play-overlay');
         const lockIndicator = document.getElementById('lock-indicator');
-        const statusDisplay = document.getElementById('status-display');
         const subStatus = document.getElementById('sub-status');
         const flashBtn = document.getElementById('flash-btn');
-        const fsHint = document.getElementById('fullscreen-hint');
         const successFlash = document.getElementById('success-flash');
-        const errorFallback = document.getElementById('error-fallback');
 
         let model, targetFeatures, targetGridData;
         let isDetected = false;
@@ -335,7 +301,7 @@
         const THRESHOLD = 0.90; 
         const VARIANCE_THRESHOLD = 0.08; 
         const COLOR_MATCH_TOLERANCE = 0.18; 
-        const BRIGHTNESS_THRESHOLD = 0.25; 
+        const BRIGHTNESS_THRESHOLD = 0.22; // ระดับแสงที่ถือว่ามืดเกินไป
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 10; 
 
@@ -373,17 +339,8 @@
                 startBtn.innerText = "เริ่มสัมผัสความทรงจำ";
                 startBtn.disabled = false;
                 clearInterval(dotTimer);
-                
-                // ตั้งค่าลิงก์สำรอง
-                errorFallback.href = PREVIEW_URL;
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
-
-        // ตรวจสอบว่าวิดีโอโหลดได้หรือไม่
-        videoPlayer.onerror = () => {
-            console.error("Video failed to load.");
-            errorFallback.style.display = 'block';
-        };
 
         startBtn.onclick = () => {
             previewContainer.classList.add('analyzing');
@@ -403,13 +360,6 @@
                             });
                             webcam.srcObject = videoStream;
                             webcam.onloadedmetadata = () => {
-                                videoPlayer.src = DIRECT_VIDEO_URL;
-                                videoPlayer.load();
-                                
-                                const track = videoStream.getVideoTracks()[0];
-                                const caps = track.getCapabilities();
-                                if (caps.torch) flashBtn.style.display = 'flex';
-
                                 setTimeout(() => {
                                     isReadyToAnalyze = true;
                                     requestAnimationFrame(predict);
@@ -421,6 +371,7 @@
             }, 1200);
         };
 
+        // ฟังก์ชันเปิด-ปิดไฟแฟลช
         flashBtn.onclick = async () => {
             if (!videoStream) return;
             const track = videoStream.getVideoTracks()[0];
@@ -428,7 +379,7 @@
                 isFlashOn = !isFlashOn;
                 await track.applyConstraints({ advanced: [{ torch: isFlashOn }] });
                 flashBtn.classList.toggle('active', isFlashOn);
-            } catch (e) { console.error("Flash error:", e); }
+            } catch (e) { console.warn("Flash not supported on this device."); }
         };
 
         async function predict() {
@@ -474,21 +425,23 @@
                     return { sim, colorMatch, hasTexture, brightness };
                 });
 
+                // --- ตรวจสอบสภาพแสงและตำแหน่ง ---
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
                     subStatus.innerText = "สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง";
                     subStatus.style.color = "#ff3b30";
-                } else if (!check.hasTexture) {
-                    subStatus.innerText = "กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน";
-                    subStatus.style.color = "#888";
-                } else if (check.sim < 0.7) {
-                    subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
-                    subStatus.style.color = "#888";
-                } else if (check.sim < THRESHOLD || !check.colorMatch) {
-                    subStatus.innerText = "เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่";
-                    subStatus.style.color = "#000";
+                    // แสดงปุ่มแฟลชเมื่อมืด
+                    if (flashBtn.style.display !== 'flex') flashBtn.style.display = 'flex';
                 } else {
-                    subStatus.innerText = "กำลังวิเคราะห์ความทรงจำ...";
                     subStatus.style.color = "#000";
+                    if (!check.hasTexture) {
+                        subStatus.innerText = "กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน";
+                    } else if (check.sim < 0.7) {
+                        subStatus.innerText = "ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ";
+                    } else if (check.sim < THRESHOLD) {
+                        subStatus.innerText = "เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่";
+                    } else {
+                        subStatus.innerText = "กำลังวิเคราะห์ความทรงจำ...";
+                    }
                 }
 
                 if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
@@ -513,7 +466,7 @@
             const frame = document.getElementById('scan-frame');
             frame.style.transform = 'translate(-50%, -50%) scale(0.8)';
             frame.style.opacity = '0';
-            subStatus.innerText = "ปลดล็อกความทรงจำสำเร็จ";
+            flashBtn.style.display = 'none';
 
             setTimeout(() => {
                 if (videoStream) videoStream.getTracks().forEach(t => t.stop());
@@ -525,34 +478,19 @@
             }, 400);
         }
 
-        playOverlay.onclick = (e) => {
-            // หากกดปุ่มสีแดง (Fallback) ให้ทำงานตามลิงก์
-            if (e.target.id === 'error-fallback') return;
-
+        playOverlay.onclick = () => {
             playOverlay.style.opacity = '0';
             setTimeout(() => {
                 playOverlay.style.display = 'none';
-                videoContainer.style.display = 'block';
                 
-                // พยายามเล่นวิดีโอ (ปิดเสียงก่อนเพื่อให้เล่นได้ชัวร์)
-                videoPlayer.muted = true;
-                const playPromise = videoPlayer.play();
-
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        // เล่นได้สำเร็จ ค่อยเปิดเสียง (หากเบราว์เซอร์ยอม)
-                        videoPlayer.muted = false;
-                    }).catch(error => {
-                        console.log("Auto-play blocked or link error. Redirecting...");
-                        // ถ้าเล่นไม่ได้เลย ให้เด้งไปที่ Google Drive Preview ทันที
-                        window.location.href = PREVIEW_URL;
-                    });
-                }
-
-                setTimeout(() => {
-                    fsHint.classList.add('show');
-                    setTimeout(() => fsHint.classList.remove('show'), 5000);
-                }, 3000);
+                // ใช้รูปแบบ Iframe Preview ตามตัวอย่างโค้ดที่เรียนรู้มา
+                videoContainer.innerHTML = `
+                    <iframe 
+                        src="${PREVIEW_URL}" 
+                        allow="autoplay" 
+                        allowfullscreen>
+                    </iframe>`;
+                videoContainer.style.display = 'block';
             }, 400);
         };
 
