@@ -20,7 +20,7 @@
             color: #000;
         }
         
-        /* หน้าจอเริ่มต้น */
+        /* Initial Overlay Screen */
         #overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -50,7 +50,6 @@
             align-items: center;
         }
 
-        /* รูปภาพจะถูกซ่อนไว้ก่อนจนกว่าจะโหลดเสร็จ */
         .preview-box img { 
             width: 100%; height: 100%; 
             object-fit: cover; 
@@ -59,7 +58,6 @@
         }
         .preview-box img.loaded { opacity: 0.9; }
 
-        /* ตัวโหลดรูปภาพ */
         .img-loader {
             position: absolute;
             width: 24px; height: 24px;
@@ -71,7 +69,13 @@
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* แอนิเมชันจุดขยับ (...) */
+        /* Stable Dots Animation */
+        .dots-container {
+            display: inline-block;
+            width: 15px;
+            text-align: left;
+        }
+
         .dots-animate::after {
             content: '';
             animation: dotsMove 1.5s infinite;
@@ -117,7 +121,7 @@
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
 
-        /* ส่วนกล้องสแกน */
+        /* Camera Scanner Section */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -163,19 +167,7 @@
             50% { transform: translateY(170px); opacity: 0.8; } 
         }
 
-        #flash-btn {
-            position: absolute;
-            top: 30px; right: 30px;
-            width: 44px; height: 44px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 50%; display: none;
-            align-items: center; justify-content: center;
-            z-index: 600; border: 1px solid #000; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #flash-btn.active { background: #000; color: #fff; }
-
+        /* Zoom Controls */
         .zoom-controls {
             position: absolute;
             bottom: 22%; left: 50%; transform: translateX(-50%);
@@ -215,6 +207,7 @@
         
         #video-container iframe { width: 100%; height: 100%; border: 0; }
 
+        /* Status Messaging */
         .status-msg {
             position: absolute;
             bottom: 12%; width: 100%;
@@ -231,6 +224,7 @@
             color: #888;
             margin-top: 4px;
             font-weight: 300;
+            min-height: 1.2em;
         }
 
         .scan-indicator {
@@ -247,22 +241,18 @@
 
     <div id="success-flash"></div>
 
-    <!-- หน้าจอเริ่มต้น -->
+    <!-- Start Overlay Screen -->
     <div id="overlay">
         <div class="preview-box" id="preview-container">
             <div class="img-loader" id="img-loader"></div>
             <div class="preview-scan-line"></div>
             <img id="target-img" src="memory-picture.JPG">
         </div>
-        <button class="btn-start" id="start-btn" disabled>กำลังเตรียมระบบ<span class="dots-animate"></span></button>
+        <button class="btn-start" id="start-btn" disabled>กำลังรอ<span class="dots-container"><span class="dots-animate"></span></span></button>
     </div>
 
-    <!-- ส่วนกล้อง -->
+    <!-- Camera Scanner View -->
     <div id="camera-container">
-        <div id="flash-btn">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        </div>
-
         <video id="webcam" autoplay playsinline muted disablePictureInPicture webkit-playsinline></video>
         
         <div class="zoom-controls" id="zoom-ui">
@@ -276,7 +266,7 @@
         </div>
         <div class="status-msg" id="status-display">
             ส่องไปที่รูปภาพความทรงจำ
-            <span class="status-sub-msg" id="sub-status">กำลังเริ่มต้นระบบ AI<span class="dots-animate"></span></span>
+            <span class="status-sub-msg" id="sub-status">กำลังเตรียมระบบ<span class="dots-container"><span class="dots-animate"></span></span></span>
         </div>
     </div>
 
@@ -299,7 +289,6 @@
         const iframeTarget = document.getElementById('iframe-target');
         const lockIndicator = document.getElementById('lock-indicator');
         const subStatus = document.getElementById('sub-status');
-        const flashBtn = document.getElementById('flash-btn');
         const successFlash = document.getElementById('success-flash');
         const imgLoader = document.getElementById('img-loader');
         const zoomBtns = document.querySelectorAll('.zoom-btn');
@@ -308,8 +297,8 @@
         let isDetected = false;
         let isReadyToAnalyze = false;
         let videoStream = null;
-        let isFlashOn = false;
         let currentZoomLevel = 1.0;
+        let lastStatusMsg = "";
         
         const THRESHOLD = 0.90; 
         const COLOR_MATCH_TOLERANCE = 0.18; 
@@ -318,9 +307,16 @@
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 10; 
 
+        // Stable status update function to prevent shaking
+        function updateStatus(msg, color = "#000") {
+            if (lastStatusMsg === msg) return;
+            lastStatusMsg = msg;
+            subStatus.style.color = color;
+            subStatus.innerHTML = `${msg}<span class="dots-container"><span class="dots-animate"></span></span>`;
+        }
+
         async function init() {
             try {
-                // ระบบโหลดรูปภาพก่อน
                 if (!targetImg.complete) {
                     await new Promise(r => {
                         targetImg.onload = () => {
@@ -335,7 +331,6 @@
                     imgLoader.style.display = 'none';
                 }
 
-                // โหลด AI
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
                 const results = tf.tidy(() => {
@@ -350,7 +345,7 @@
                 targetFeatures = results.feat;
                 targetGridData = results.grids;
                 
-                startBtn.innerHTML = 'เริ่มสัมผัสความทรงจำ';
+                startBtn.innerHTML = 'เริ่มสแกน';
                 startBtn.disabled = false;
             } catch (e) { startBtn.innerText = "เกิดข้อผิดพลาด"; }
         }
@@ -369,9 +364,6 @@
                         });
                         webcam.srcObject = videoStream;
                         webcam.onloadedmetadata = () => {
-                            const track = videoStream.getVideoTracks()[0];
-                            const caps = track.getCapabilities();
-                            if (caps.torch) flashBtn.style.display = 'flex';
                             zoomBtns.forEach(btn => {
                                 btn.onclick = () => applyAdaptiveZoom(parseFloat(btn.dataset.zoom), btn);
                             });
@@ -380,7 +372,7 @@
                                 requestAnimationFrame(predict);
                             }, 2000);
                         };
-                    } catch (err) { subStatus.innerText = "ไม่สามารถเข้าถึงกล้องได้"; }
+                    } catch (err) { updateStatus('ไม่สามารถเข้าถึงกล้องได้', '#ff3b30'); }
                 }, 500);
             }, 1200);
         };
@@ -389,10 +381,13 @@
             if (!videoStream) return;
             const track = videoStream.getVideoTracks()[0];
             const caps = track.getCapabilities();
+            
             zoomBtns.forEach(b => b.classList.remove('active'));
             el.classList.add('active');
             currentZoomLevel = val;
+            
             webcam.style.transform = `scale(${val})`;
+            
             if (caps.zoom) {
                 try {
                     const target = Math.max(caps.zoom.min, Math.min(val, caps.zoom.max));
@@ -401,49 +396,44 @@
             }
         }
 
-        flashBtn.onclick = async () => {
-            if (!videoStream) return;
-            const track = videoStream.getVideoTracks()[0];
-            try {
-                isFlashOn = !isFlashOn;
-                await track.applyConstraints({ advanced: [{ torch: isFlashOn }] });
-                flashBtn.classList.toggle('active', isFlashOn);
-            } catch (e) { isFlashOn = false; flashBtn.classList.remove('active'); }
-        };
-
         async function predict() {
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4) {
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
-                    const zoomFactor = currentZoomLevel >= 2.0 ? 0.35 : 0.42;
-                    const roiW = w * zoomFactor; 
+                    
+                    const baseZoomFactor = 0.42;
+                    const adaptiveFactor = baseZoomFactor / currentZoomLevel; 
+                    
+                    const roiW = w * adaptiveFactor; 
                     const roiH = roiW * (10/16);
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
+                    
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startY/h, startX/w, (startY+roiH)/h, (startX+roiW)/w]], [0], [224, 224]);
+                    
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
+                    
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) currentGrids.push(cImg.slice([i*74, j*74, 0], [74, 74, 3]).mean().div(255).dataSync()[0]);
+                    
                     const brightness = currentGrids.reduce((a, b) => a + b) / 9;
                     let diffSum = 0;
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
                     const variance = currentGrids.reduce((a, b) => a + Math.pow(b - brightness, 2)) / 9;
+
                     return { sim, colorMatch: (diffSum / 9) < COLOR_MATCH_TOLERANCE, hasTexture: variance > VARIANCE_THRESHOLD, brightness };
                 });
 
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
-                    subStatus.innerHTML = 'สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง<span class="dots-animate"></span>';
-                    subStatus.style.color = "#ff3b30";
-                    if (flashBtn.style.display !== 'flex') flashBtn.style.display = 'flex';
+                    updateStatus('สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง', '#ff3b30');
                 } else {
-                    subStatus.style.color = "#000";
-                    if (!check.hasTexture) subStatus.innerHTML = 'กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน<span class="dots-animate"></span>';
-                    else if (check.sim < 0.7) subStatus.innerHTML = 'ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ<span class="dots-animate"></span>';
-                    else if (check.sim < THRESHOLD) subStatus.innerHTML = 'เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่<span class="dots-animate"></span>';
-                    else subStatus.innerHTML = 'กำลังวิเคราะห์ความทรงจำ<span class="dots-animate"></span>';
+                    if (!check.hasTexture) updateStatus('กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน');
+                    else if (check.sim < 0.7) updateStatus('ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ');
+                    else if (check.sim < THRESHOLD) updateStatus('เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่');
+                    else updateStatus('กำลังวิเคราะห์ความทรงจำ');
                 }
 
                 if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
@@ -465,14 +455,20 @@
             frame.style.transform = 'translate(-50%, -50%) scale(0.8)';
             frame.style.opacity = '0';
             document.getElementById('zoom-ui').style.display = 'none';
-            flashBtn.style.display = 'none';
 
             setTimeout(() => {
                 if (videoStream) videoStream.getTracks().forEach(t => t.stop());
                 cameraContainer.style.display = 'none';
                 successFlash.style.opacity = '0';
+                
                 videoContainer.classList.add('active');
-                iframeTarget.innerHTML = `<iframe src="${PREVIEW_URL}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                
+                iframeTarget.innerHTML = `
+                    <iframe 
+                        src="${PREVIEW_URL}" 
+                        allow="autoplay; fullscreen" 
+                        allowfullscreen>
+                    </iframe>`;
             }, 400);
         }
 
