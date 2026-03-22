@@ -72,22 +72,30 @@
             75% { content: '...'; }
         }
 
-        /* แอนิเมชันกระพริบช้าลง ขยายเล็กน้อย และเปลี่ยนเป็นขาวดำ */
+        /* แอนิเมชันใหม่: สแกนสี -> ขาวดำ -> กระพริบช้า -> ซูมน้อย */
         @keyframes imageTransitionEffect {
+            /* 0s - 1s (0% - 40%): ภาพสียังคงที่ขณะเส้นสแกนวิ่ง */
             0% { filter: brightness(1) grayscale(0); transform: scale(1); opacity: 0.9; }
-            20% { filter: brightness(1.8) grayscale(0); opacity: 1; }
-            40% { filter: brightness(1) grayscale(0); opacity: 0.9; }
-            60% { filter: brightness(1.8) grayscale(0); opacity: 1; }
-            75% { filter: brightness(1) grayscale(1); transform: scale(1); opacity: 0.9; } /* จังหวะเส้นถึงล่างสุด */
-            90% { filter: brightness(1) grayscale(1); transform: scale(1.1); opacity: 0.6; }
+            40% { filter: brightness(1) grayscale(0); transform: scale(1); opacity: 0.9; }
+            
+            /* 1s (41%): เปลี่ยนเป็นขาวดำทันทีที่เส้นถึงพื้น */
+            41% { filter: brightness(1) grayscale(1); transform: scale(1); opacity: 0.9; }
+            
+            /* 1s - 2s (45% - 80%): กระพริบ 2 ครั้งแบบช้าลง */
+            50% { filter: brightness(2) grayscale(1); }
+            60% { filter: brightness(1) grayscale(1); }
+            70% { filter: brightness(2) grayscale(1); }
+            80% { filter: brightness(1) grayscale(1); transform: scale(1); opacity: 0.9; }
+            
+            /* 2s - 2.5s (80% - 100%): ซูมนิดเดียวแล้วจางหาย */
             100% { filter: brightness(1.1) grayscale(1); transform: scale(1.15); opacity: 0; }
         }
 
         .start-animating img {
-            animation: imageTransitionEffect 2s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+            animation: imageTransitionEffect 2.5s cubic-bezier(0.45, 0, 0.55, 1) forwards;
         }
 
-        /* เส้นสแกนตอนเปลี่ยนหน้า */
+        /* เส้นสแกนตอนเปลี่ยนหน้า - วิ่งถึงพื้นใน 1 วินาที */
         .preview-scan-line {
             position: absolute;
             top: 0; left: 0;
@@ -105,8 +113,7 @@
 
         .start-animating .preview-scan-line {
             display: block;
-            /* วิ่งลงมาถึงพื้นตอนแอนิเมชันรูปถึงจังหวะขาวดำ (ประมาณ 1.5s) */
-            animation: scanOnceSmooth 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            animation: scanOnceSmooth 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         .img-loader {
@@ -369,11 +376,11 @@
         }
 
         startBtn.onclick = () => {
-            // เริ่มแอนิเมชันกระพริบ ขยาย และเส้นสแกน
+            // เริ่มแอนิเมชันลำดับขั้น (สแกน -> ขาวดำ -> กระพริบ)
             previewContainer.classList.add('start-animating');
             startBtn.disabled = true;
             
-            // หน่วงเวลา 2 วินาทีเพื่อให้แอนิเมชันขาวดำและขยายทำงานจนจบ
+            // หน่วงเวลา 2.5 วินาทีเพื่อให้แอนิเมชันทำงานจนจบสมบูรณ์
             setTimeout(() => {
                 overlay.style.opacity = '0';
                 setTimeout(async () => {
@@ -395,7 +402,7 @@
                         };
                     } catch (err) { updateStatus('ไม่สามารถเข้าถึงกล้องได้', '#ff3b30'); }
                 }, 500);
-            }, 2000);
+            }, 2500);
         };
 
         async function applyAdaptiveZoom(val, el) {
