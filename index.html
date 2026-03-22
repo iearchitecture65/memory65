@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Memory Lens AI</title>
+    <title>Memory 65</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -240,7 +240,7 @@
         <span style="font-size:0.85rem; opacity:0.5; margin-top:8px">แตะเพื่อเปิดรับชม</span>
     </div>
 
-    <!-- เปลี่ยนจากไฟล์ Video.mp4 เป็นลิงก์ Google Drive -->
+    <!-- วิดีโอจากลิงก์ Google Drive -->
     <video id="video-player" src="https://drive.google.com/uc?id=1K6XKIMPY8ZB4O5oECe9Qg3k6urdiXyrT" playsinline loop controls crossorigin="anonymous"></video>
 
     <script>
@@ -263,11 +263,11 @@
         
         // ความเข้มงวดอัจฉริยะ (Extreme Threshold)
         const THRESHOLD = 0.94; 
-        const VARIANCE_THRESHOLD = 0.08; 
+        const VARIANCE_THRESHOLD = 0.08; // กรองวัตถุผิวเรียบสีเดียว (เช่น รีโมท)
         let detectionConfidence = 0;
         const CONFIDENCE_REQUIRED = 12;
 
-        // จุดไข่ปลาวิ่งในปุ่ม
+        // จุดไข่ปลาวิ่งในปุ่มขณะโหลด
         let dots = 0;
         const dotTimer = setInterval(() => {
             if (startBtn.disabled && startBtn.innerText.includes("กำลังรอ")) {
@@ -281,6 +281,7 @@
                 if (!targetImg.complete) await new Promise(r => targetImg.onload = r);
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
+                // วิเคราะห์รูปถ่ายต้นฉบับ (AI + 3x3 Color Grid)
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
@@ -343,9 +344,11 @@
                     
                     const cropped = tf.image.cropAndResize(full.expandDims(0).toFloat(), [[startH/h, startW/w, (startH+size)/h, (startW+size)/w]], [0], [224, 224]);
                     
+                    // 1. ตรวจสอบ MobileNet Similarity
                     const feat = model.infer(cropped.div(127.5).sub(1), true);
                     const sim = tf.sum(tf.mul(tf.div(targetFeatures, tf.norm(targetFeatures)), tf.div(feat, tf.norm(feat)))).dataSync()[0];
 
+                    // 2. ตรวจสอบ Color Variance & Grid (ป้องกันรีโมท/วัตถุสีเรียบ)
                     const gridSide = 74; 
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
@@ -384,6 +387,7 @@
 
         function triggerSuccess() {
             isDetected = true;
+            // เอฟเฟกต์แสงวาบและความนุ่มนวล
             successFlash.style.opacity = '1';
             webcam.style.filter = 'brightness(2) contrast(0.5) blur(10px)';
             const frame = document.getElementById('scan-frame');
