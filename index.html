@@ -110,22 +110,12 @@
             75% { content: '...'; }
         }
 
-        /* --- Updated Animation Timing per request (2.7s total) --- */
         @keyframes complexTransition {
-            /* 0s - 1.5s: Scanning/BW Phase (55.5%) */
             0%, 55.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            
-            /* 1.5s - 1.7s: 0.2s Pause (55.5% - 63%) */
             63% { filter: brightness(1); transform: scale(1); }
-            
-            /* 1.7s - 2.1s: 0.4s Single Flash (63% - 77.8%) */
             70.4% { filter: brightness(3); transform: scale(1.02); }
             77.8% { filter: brightness(1); transform: scale(1); }
-            
-            /* 2.1s - 2.2s: 0.1s Pause (77.8% - 81.5%) */
             81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            
-            /* 2.2s - 2.7s: 0.5s Zoom & Fade Out (81.5% - 100%) */
             100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; }
         }
 
@@ -184,7 +174,7 @@
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
 
-        /* Camera Scanner Section */
+        /* Camera Scanner View */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -206,10 +196,10 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 75vw; aspect-ratio: 16 / 10;
-            max-width: 300px;
+            width: 75vw; aspect-ratio: 3 / 2; /* ปรับสัดส่วนให้ตรงกับรูปถ่ายส่วนใน */
+            max-width: 320px;
             border: 1.5px solid #000;
-            border-radius: 8px;
+            border-radius: 4px;
             box-shadow: 0 0 0 2000px rgba(255,255,255,0.85);
             z-index: 510;
             transition: all 0.5s ease;
@@ -227,7 +217,7 @@
 
         @keyframes scanHardware { 
             0%, 100% { transform: translateY(10px); opacity: 0.2; } 
-            50% { transform: translateY(170px); opacity: 0.8; } 
+            50% { transform: translateY(190px); opacity: 0.8; } 
         }
 
         /* Zoom Controls */
@@ -376,13 +366,13 @@
         let currentZoomLevel = 1.0;
         let lastStatusMsg = "";
         
-        // --- High Strictness with Improved Reliability ---
-        const THRESHOLD = 0.95; 
-        const COLOR_MATCH_TOLERANCE = 0.12; 
+        // --- ปรับปรุงค่าความแม่นยำเพื่อรองรับรูปปริ้นส์และมีซองพลาสติก ---
+        const THRESHOLD = 0.93; // ลดลงเล็กน้อยจาก 0.95 เพื่อรองรับความเบลอของงานปริ้นส์
+        const COLOR_MATCH_TOLERANCE = 0.15; // เพิ่มขึ้นจาก 0.12 เพื่อรองรับสีที่เพี้ยนจากซองพลาสติก
         const BRIGHTNESS_THRESHOLD = 0.18; 
-        const VARIANCE_THRESHOLD = 0.07; // ปรับลดจาก 0.15 ลงมาเพื่อให้ตรวจจับรูปภาพจริงได้ง่ายขึ้นแต่ยังกันพัดลมได้
+        const VARIANCE_THRESHOLD = 0.05; // ลดลงจาก 0.07 เพื่อรองรับรูปที่ขาดความคมชัด (เบลอ)
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 18; 
+        const CONFIDENCE_REQUIRED = 15; // ลดลงจาก 18 เพื่อให้จับภาพได้ไวขึ้นในสภาพแสงที่ไม่คงที่
 
         function updateStatus(msg, color = "#000") {
             if (lastStatusMsg === msg) return;
@@ -414,6 +404,7 @@
                     const feat = model.infer(tf.image.resizeBilinear(img, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
                     const h = img.shape[0], w = img.shape[1], gh = Math.floor(h/3), gw = Math.floor(w/3);
                     let grids = [];
+                    // วิเคราะห์เฉพาะจุดสำคัญของภาพ
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) grids.push(img.slice([i*gh, j*gw, 0], [gh, gw, 3]).mean().div(255).dataSync()[0]);
                     return { feat, grids };
                 });
@@ -431,8 +422,6 @@
         startBtn.onclick = () => {
             overlay.classList.add('start-animating');
             startBtn.disabled = true;
-            
-            // Wait for full 2.7s animation sequence before switching to camera
             setTimeout(() => {
                 overlay.style.opacity = '0';
                 setTimeout(async () => {
@@ -500,13 +489,14 @@
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
                     updateStatus('สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง', '#ff3b30');
                 } else {
-                    if (!check.hasTexture) updateStatus('กรุณาวางรูปถ่ายให้เข้าใกล้กรอบสแกน');
+                    // หากรูปภาพเบลอ ค่า Texture จะน้อย แต่ถ้า Sim สูง แสดงว่าเป็นรูปเป้าหมายจริง
+                    if (!check.hasTexture && check.sim < 0.8) updateStatus('ขยับกล้องให้นิ่งและโฟกัสที่รูป');
                     else if (check.sim < 0.8) updateStatus('ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ');
                     else if (check.sim < THRESHOLD) updateStatus('เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่');
                     else updateStatus('กำลังวิเคราะห์ความทรงจำ');
                 }
 
-                if (check.sim > THRESHOLD && check.colorMatch && check.hasTexture) {
+                if (check.sim > THRESHOLD && check.colorMatch) { // เน้นความเหมือนของสีและฟีเจอร์หลัก
                     detectionConfidence++;
                     lockIndicator.classList.add('scan-active');
                     if (detectionConfidence >= CONFIDENCE_REQUIRED) { triggerSuccess(); return; }
