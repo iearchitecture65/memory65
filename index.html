@@ -113,13 +113,15 @@
         }
 
         /* --- Animation Timing (2.7s total) --- */
+        /* Phase 1: 0-1.5s (Scan) | Phase 2: 1.5-1.7s (Pause) | Phase 3: 1.7-2.1s (Flash) | Phase 4: 2.1-2.2s (Pause) | Phase 5: 2.2-2.7s (Zoom) */
         @keyframes complexTransition {
-            0%, 55.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            63% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 0.2s Pause */
-            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } /* 0.4s Flash */
-            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   
-            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 0.1s Pause */
-            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } /* 0.5s Zoom */
+            0% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 1.5s mark */
+            63% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 1.7s mark (Pause 0.2s) */
+            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } /* 1.9s mark (Flash Peak) */
+            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.1s mark (Flash End) */
+            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.2s mark (Pause 0.1s) */
+            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } /* 2.7s mark (Zoom/Fade) */
         }
 
         .start-animating .preview-box {
@@ -147,7 +149,7 @@
 
         @keyframes scanOnceSmooth { 
             0% { transform: translateY(0); opacity: 1; } 
-            100% { transform: translateY(157px); opacity: 1; } /* ปรับระยะวิ่งให้พอดีกับ 16:9 */
+            100% { transform: translateY(157px); opacity: 1; } 
         }
 
         .start-animating .preview-scan-line {
@@ -196,7 +198,7 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 75vw; aspect-ratio: 3 / 2; /* ใช้ 3:2 เพื่อให้ตรวจจับรูปถ่ายตรงกลางได้แม่นยำ */
+            width: 75vw; aspect-ratio: 3 / 2;
             max-width: 320px;
             border: 1.5px solid #000;
             border-radius: 4px;
@@ -335,8 +337,8 @@
     </div>
 
     <script>
-        // ใช้ DRIVE_ID ตัวล่าสุด
-        const DRIVE_ID = "19XPlEPK9bUb-aWDTEh87e_CgDcekkrVE";
+        // เปลี่ยน ID เป็นลิงก์ใหม่ที่คุณส่งมา
+        const DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
         const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
 
         const targetImg = document.getElementById('target-img');
@@ -377,6 +379,7 @@
 
         async function init() {
             try {
+                // Ensure image is ready (Fix texture size error)
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
                     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -464,7 +467,7 @@
         }
 
         async function predict() {
-            // Safety check for texture 0x0
+            // Safety check for texture size error
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4 && webcam.videoWidth > 0) {
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
