@@ -65,7 +65,8 @@
             position: relative;
             width: 100%;
             max-width: 280px;
-            aspect-ratio: 16 / 9;
+            /* แก้ไขจาก 16/9 เป็น 3/2 เพื่อให้รูปไม่ถูกยืด */
+            aspect-ratio: 3 / 2;
             margin-bottom: 70px; 
             border-radius: 12px;
             overflow: hidden;
@@ -112,15 +113,14 @@
         }
 
         /* --- Animation Timing (2.7s total) --- */
-        /* Phase 1: 0-1.5s (Scan) | Phase 2: 1.5-1.7s (Pause) | Phase 3: 1.7-2.1s (Flash) | Phase 4: 2.1-2.2s (Pause) | Phase 5: 2.2-2.7s (Zoom) */
         @keyframes complexTransition {
             0% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 1.5s mark */
-            63% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 1.7s mark (Pause 0.2s) */
-            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } /* 1.9s mark (Flash Peak) */
-            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.1s mark (Flash End) */
-            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.2s mark (Pause 0.1s) */
-            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } /* 2.7s mark (Zoom/Fade) */
+            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; } 
+            63% { filter: brightness(1); transform: scale(1); opacity: 1; }  
+            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } 
+            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   
+            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }   
+            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } 
         }
 
         .start-animating .preview-box {
@@ -148,7 +148,8 @@
 
         @keyframes scanOnceSmooth { 
             0% { transform: translateY(0); opacity: 1; } 
-            100% { transform: translateY(157px); opacity: 1; } 
+            /* ปรับระยะวิ่งให้สุดกรอบ 3/2 (ประมาณ 186px สำหรับความกว้าง 280px) */
+            100% { transform: translateY(186px); opacity: 1; } 
         }
 
         .start-animating .preview-scan-line {
@@ -178,7 +179,7 @@
         
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
 
-        /* Camera Scanner View */
+        /* Camera Scanner Section */
         #camera-container {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -336,7 +337,7 @@
     </div>
 
     <script>
-        const DRIVE_ID = "19XPlEPK9bUb-aWDTEh87e_CgDcekkrVE";
+        const DRIVE_ID = "1K6XKIMPY8ZB4O5oECe9Qg3k6urdiXyrT";
         const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
 
         const targetImg = document.getElementById('target-img');
@@ -361,7 +362,7 @@
         let currentZoomLevel = 1.0;
         let lastStatusMsg = "";
         
-        // --- High Strictness with Improved Reliability for Printed/Plastic Photos ---
+        // Threshold สำหรับรูปถ่ายงานพิมพ์ที่มีความเบลอและแสงสะท้อน
         const THRESHOLD = 0.93; 
         const COLOR_MATCH_TOLERANCE = 0.15; 
         const BRIGHTNESS_THRESHOLD = 0.18; 
@@ -378,7 +379,6 @@
 
         async function init() {
             try {
-                // Ensure image is ready
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
                     if (img.complete) return Promise.resolve();
@@ -395,7 +395,7 @@
                 
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
-                    // Focus on the center 80% to avoid frame interference
+                    // ปรับ Focus ไปที่ส่วนกลางรูป 80% เพื่อขจัดขอบ slide และซองพลาสติกส่วนเกินออก
                     const [h, w] = img.shape;
                     const cropH = h * 0.8, cropW = w * 0.8;
                     const y = (h - cropH) / 2, x = (w - cropW) / 2;
@@ -426,7 +426,6 @@
             overlay.classList.add('start-animating');
             startBtn.disabled = true;
             
-            // Wait for full sequence (2.7s)
             setTimeout(() => {
                 overlay.style.opacity = '0';
                 setTimeout(async () => {
@@ -463,7 +462,7 @@
                 try {
                     const target = Math.max(caps.zoom.min, Math.min(val, caps.zoom.max));
                     await track.applyConstraints({ advanced: [{ zoom: target }] });
-                } catch (e) { /* Fallback to CSS scaling */ }
+                } catch (e) { }
             }
         }
 
@@ -475,7 +474,7 @@
                     const baseZoomFactor = 0.42;
                     const adaptiveFactor = baseZoomFactor / currentZoomLevel; 
                     const roiW = w * adaptiveFactor; 
-                    const roiH = roiW * (2/3); // Match 3:2 frame
+                    const roiH = roiW * (2/3); 
                     const startY = (h - roiH) / 2;
                     const startX = (w - roiW) / 2;
                     
@@ -485,7 +484,6 @@
                     
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
-                    // Using 74x74 slices for 224x224 input
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) currentGrids.push(cImg.slice([i*74, j*74, 0], [74, 74, 3]).mean().div(255).dataSync()[0]);
                     
                     const brightness = currentGrids.reduce((a, b) => a + b) / 9;
@@ -499,7 +497,6 @@
                 if (check.brightness < BRIGHTNESS_THRESHOLD) {
                     updateStatus('สภาพแสงมืดเกินไป กรุณาเพิ่มความสว่าง', '#ff3b30');
                 } else {
-                    // For printed photos, we prioritize content similarity over texture variance
                     if (!check.hasTexture && check.sim < 0.7) updateStatus('ขยับกล้องให้นิ่งและโฟกัสที่รูป');
                     else if (check.sim < 0.8) updateStatus('ขยับรูปให้ตรงจุดกึ่งกลางของกรอบ');
                     else if (check.sim < THRESHOLD) updateStatus('เกือบแล้ว... ถือนิ่งๆ ไว้สักครู่');
