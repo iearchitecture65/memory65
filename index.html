@@ -65,8 +65,8 @@
             position: relative;
             width: 100%;
             max-width: 280px;
-            /* แก้ไขจาก 16/9 เป็น 3/2 เพื่อให้รูปไม่ถูกยืด */
-            aspect-ratio: 3 / 2;
+            /* ปรับกลับเป็น 16:9 ตามสัดส่วนคลิปของคุณเพื่อป้องกันการบีบด้านข้าง */
+            aspect-ratio: 16 / 9;
             margin-bottom: 70px; 
             border-radius: 12px;
             overflow: hidden;
@@ -114,13 +114,12 @@
 
         /* --- Animation Timing (2.7s total) --- */
         @keyframes complexTransition {
-            0% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; } 
-            63% { filter: brightness(1); transform: scale(1); opacity: 1; }  
-            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } 
+            0%, 55.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            63% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 0.2s Pause */
+            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } /* 0.4s Flash */
             77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   
-            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }   
-            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } 
+            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 0.1s Pause */
+            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } /* 0.5s Zoom */
         }
 
         .start-animating .preview-box {
@@ -148,8 +147,7 @@
 
         @keyframes scanOnceSmooth { 
             0% { transform: translateY(0); opacity: 1; } 
-            /* ปรับระยะวิ่งให้สุดกรอบ 3/2 (ประมาณ 186px สำหรับความกว้าง 280px) */
-            100% { transform: translateY(186px); opacity: 1; } 
+            100% { transform: translateY(157px); opacity: 1; } /* ปรับระยะวิ่งให้พอดีกับ 16:9 */
         }
 
         .start-animating .preview-scan-line {
@@ -198,7 +196,7 @@
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 75vw; aspect-ratio: 3 / 2;
+            width: 75vw; aspect-ratio: 3 / 2; /* ใช้ 3:2 เพื่อให้ตรวจจับรูปถ่ายตรงกลางได้แม่นยำ */
             max-width: 320px;
             border: 1.5px solid #000;
             border-radius: 4px;
@@ -337,7 +335,8 @@
     </div>
 
     <script>
-        const DRIVE_ID = "1DGxvjAsVpQxi9sE5jr9wYOFjgX3LBoMz";
+        // ใช้ DRIVE_ID ตัวล่าสุด
+        const DRIVE_ID = "19XPlEPK9bUb-aWDTEh87e_CgDcekkrVE";
         const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
 
         const targetImg = document.getElementById('target-img');
@@ -362,7 +361,6 @@
         let currentZoomLevel = 1.0;
         let lastStatusMsg = "";
         
-        // Threshold สำหรับรูปถ่ายงานพิมพ์ที่มีความเบลอและแสงสะท้อน
         const THRESHOLD = 0.93; 
         const COLOR_MATCH_TOLERANCE = 0.15; 
         const BRIGHTNESS_THRESHOLD = 0.18; 
@@ -381,12 +379,14 @@
             try {
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
-                    if (img.complete) return Promise.resolve();
+                    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
                     return new Promise(r => { 
                         img.onload = r; 
                         img.onerror = r; 
                     });
                 }));
+
+                if (targetImg.naturalWidth === 0) throw new Error("Invalid image");
 
                 targetImg.classList.add('loaded');
                 imgLoader.style.display = 'none';
@@ -395,14 +395,11 @@
                 
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
-                    // ปรับ Focus ไปที่ส่วนกลางรูป 80% เพื่อขจัดขอบ slide และซองพลาสติกส่วนเกินออก
                     const [h, w] = img.shape;
                     const cropH = h * 0.8, cropW = w * 0.8;
                     const y = (h - cropH) / 2, x = (w - cropW) / 2;
                     const centralPart = img.slice([Math.floor(y), Math.floor(x), 0], [Math.floor(cropH), Math.floor(cropW), 3]);
-                    
                     const feat = model.infer(tf.image.resizeBilinear(centralPart, [224, 224]).expandDims(0).toFloat().div(127.5).sub(1), true);
-                    
                     let grids = [];
                     const gh = Math.floor(h/3), gw = Math.floor(w/3);
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) grids.push(img.slice([i*gh, j*gw, 0], [gh, gw, 3]).mean().div(255).dataSync()[0]);
@@ -467,7 +464,8 @@
         }
 
         async function predict() {
-            if (!isDetected && isReadyToAnalyze && webcam.readyState === 4) {
+            // Safety check for texture 0x0
+            if (!isDetected && isReadyToAnalyze && webcam.readyState === 4 && webcam.videoWidth > 0) {
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
                     const [h, w] = full.shape;
@@ -485,7 +483,6 @@
                     const cImg = cropped.squeeze();
                     let currentGrids = [];
                     for(let i=0; i<3; i++) for(let j=0; j<3; j++) currentGrids.push(cImg.slice([i*74, j*74, 0], [74, 74, 3]).mean().div(255).dataSync()[0]);
-                    
                     const brightness = currentGrids.reduce((a, b) => a + b) / 9;
                     let diffSum = 0;
                     for(let i=0; i<9; i++) diffSum += Math.abs(currentGrids[i] - targetGridData[i]);
