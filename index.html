@@ -656,11 +656,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // ==========================================
-        // 1. Firebase Setup
+        // 1. Firebase Setup (Realtime Database)
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDW8xe8Cf2ytX4HwTrM13dfoJPG3NZrVMo",
@@ -675,17 +674,17 @@
 
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        const db = getDatabase(app);
         
-        const configDoc = doc(db, "app_settings", "memory65_config");
+        // เก็บข้อมูลใน Database path ชื่อ "app_settings/memory65_config"
+        const configRef = ref(db, "app_settings/memory65_config");
 
         const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
         let appConfig = {
             driveId: DEFAULT_DRIVE_ID,
             videoDuration: 11, 
             popupBefore: 3, 
-            popupEnabled: true, // ค่าการเปิดปิดป๊อปอัพเริ่มต้น
+            popupEnabled: true,
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
             popupBtnText: "ปิดหน้าต่าง",
@@ -713,29 +712,27 @@
         // ==========================================
         // 2. ดึงข้อมูลจาก Firebase แบบ Realtime
         // ==========================================
-        signInAnonymously(auth).then(() => {
-            onSnapshot(configDoc, (snapshot) => {
-                if (snapshot.exists()) {
-                    appConfig = { ...appConfig, ...snapshot.data() };
-                } else {
-                    setDoc(configDoc, appConfig).catch(console.error);
-                }
-                
-                isFirebaseLoaded = true;
-                
-                if (isAdminMode) {
-                    populateAdminForm();
-                    updateAdminLivePreview();
-                } else {
-                    checkReadyStatus();
-                }
-            }, (error) => {
-                console.error("Firebase Snapshot Error:", error);
-                isFirebaseLoaded = true;
+        onValue(configRef, (snapshot) => {
+            if (snapshot.exists()) {
+                appConfig = { ...appConfig, ...snapshot.val() };
+            } else {
+                // ครั้งแรกที่เปิดฐานข้อมูล ให้ยัดค่า Default ลงไปเลย
+                set(configRef, appConfig).catch(e => console.log("Init save failed:", e));
+            }
+            
+            isFirebaseLoaded = true;
+            
+            if (isAdminMode) {
+                populateAdminForm();
+                updateAdminLivePreview();
+            } else {
                 checkReadyStatus();
-            });
-        }).catch(error => {
-            console.error("Firebase Auth Error:", error);
+            }
+        }, (error) => {
+            console.error("Firebase Read Error:", error);
+            if(isAdminMode) {
+                alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาเช็ค Rules ใน Firebase ว่าตั้งเป็น true หรือยัง");
+            }
             isFirebaseLoaded = true;
             checkReadyStatus();
         });
@@ -1153,7 +1150,6 @@
                     popupText: document.getElementById('cfg-popup-text').value,
                     popupFont: document.getElementById('cfg-popup-font').value || "Kanit",
                     popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ปิดหน้าต่าง",
-                    // ลบการบันทึก popupBtnLink ออกจากระบบ
                     popupBg: document.getElementById('cfg-popup-bg').value || "#ffffff",
                     popupTextColor: document.getElementById('cfg-popup-text-color').value || "#000000",
                     popupBtnBg: document.getElementById('cfg-popup-btn-bg').value || "#000000",
@@ -1161,12 +1157,12 @@
                 };
 
                 try {
-                    await setDoc(configDoc, newConfig);
+                    await set(configRef, newConfig);
                     alert('บันทึกการตั้งค่าสำเร็จ! ข้อมูลอัปเดตแบบเรียลไทม์ไปทุกเครื่องแล้ว');
                     window.location.href = window.location.pathname;
                 } catch (error) {
                     console.error("Firebase Save Error:", error);
-                    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                    alert('เกิดข้อผิดพลาดในการบันทึก (อย่าลืมเปิด Rules เป็น true): ' + error.message);
                     btn.innerText = "💾 บันทึกการตั้งค่า";
                     btn.disabled = false;
                 }
