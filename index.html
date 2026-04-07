@@ -433,6 +433,14 @@
             <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
         </div>
         <div class="admin-group">
+            <label>ความยาววิดีโอทั้งหมด (วินาที) <br><small style="color:#d32f2f; font-weight:normal;">*ต้องใส่เพื่อให้ระบบตั้งเวลาเด้งอัตโนมัติ (ใส่ 0 ถ้าไม่ต้องการตั้งเวลา)</small></label>
+            <input type="number" id="cfg-video-duration" placeholder="เช่น 60 (สำหรับคลิป 1 นาที)">
+        </div>
+        <div class="admin-group">
+            <label>ให้ป๊อปอัพเด้งก่อนวิดีโอจบกี่วินาที</label>
+            <input type="number" id="cfg-popup-before" placeholder="เช่น 10 (เด้งก่อนจบ 10 วิ)">
+        </div>
+        <div class="admin-group">
             <label>ลิงก์รูปภาพในป๊อปอัพ (เว้นว่างได้ถ้าไม่ต้องการใส่)</label>
             <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg">
         </div>
@@ -490,6 +498,8 @@
         // ดึงการตั้งค่าจาก localStorage ถ้าไม่มีให้ใช้ค่าเริ่มต้น
         let appConfig = JSON.parse(localStorage.getItem('memory65_config')) || {
             driveId: DEFAULT_DRIVE_ID,
+            videoDuration: 0,
+            popupBefore: 10,
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
             popupBtnText: "กลับไปหน้าแรก",
@@ -695,13 +705,31 @@
                 flash.style.opacity = '0';
                 videoContainer.classList.add('active');
                 iframeTarget.innerHTML = `<iframe src="${PREVIEW_URL}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                
+                // --- ระบบตั้งเวลา Popup อัตโนมัติ ---
+                const totalDuration = parseInt(appConfig.videoDuration) || 0;
+                const beforeEnd = parseInt(appConfig.popupBefore) || 0;
+                
+                if (totalDuration > 0) {
+                    let delaySeconds = totalDuration - beforeEnd;
+                    if (delaySeconds < 0) delaySeconds = 0; // ป้องกันค่าติดลบ
+                    
+                    setTimeout(() => {
+                        // เช็คว่าถ้าผู้ใช้ยังไม่ได้กดปุ่มปิดเอง ให้เด้ง popup
+                        if (videoContainer.classList.contains('active')) {
+                            openPopupOverlay();
+                        }
+                    }, delaySeconds * 1000); // แปลงเป็นมิลลิวินาที
+                }
+                // ------------------------------------
+                
             }, 400);
         }
 
         // --- ส่วนที่เพิ่มใหม่: ระบบจัดการ Popup และ Admin ---
         
-        // เมื่อกดปุ่ม "ดูจบแล้ว (เสร็จสิ้น)"
-        document.getElementById('finish-video-btn').onclick = () => {
+        // แยกฟังก์ชันเปิด Popup ออกมาเพื่อให้ใช้ร่วมกันได้
+        function openPopupOverlay() {
             // ปิดวิดีโอ
             iframeTarget.innerHTML = '';
             videoContainer.classList.remove('active');
@@ -736,7 +764,10 @@
 
             // แสดง Popup
             document.getElementById('popup-container').style.display = 'flex';
-        };
+        }
+
+        // เมื่อกดปุ่ม "ดูจบแล้ว (เสร็จสิ้น)" (กรณีอยากกดปิดเองก่อนเวลา)
+        document.getElementById('finish-video-btn').onclick = openPopupOverlay;
 
         // ปิด Popup ถ้าต้องการกลับไปหน้าสแกน
         document.getElementById('popup-close-btn').onclick = () => {
@@ -752,6 +783,8 @@
 
             // เติมข้อมูลเก่าลงในช่องกรอก
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
+            document.getElementById('cfg-video-duration').value = appConfig.videoDuration || 0;
+            document.getElementById('cfg-popup-before').value = appConfig.popupBefore || 10;
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
             document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
@@ -765,10 +798,12 @@
             // บันทึกการตั้งค่า
             document.getElementById('btn-save-admin').onclick = () => {
                 appConfig.driveId = document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID;
+                appConfig.videoDuration = parseInt(document.getElementById('cfg-video-duration').value) || 0;
+                appConfig.popupBefore = parseInt(document.getElementById('cfg-popup-before').value) || 0;
                 appConfig.popupImg = document.getElementById('cfg-popup-img').value.trim();
                 appConfig.popupText = document.getElementById('cfg-popup-text').value;
                 appConfig.popupBtnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
-                appConfig.popupBtnLink = document.getElementById('cfg-popup-btn-link').value || "#";
+                appConfig.popupBtnLink = document.getElementById('cfg-popup-b๐tn-link').value || "#";
                 appConfig.popupFont = document.getElementById('cfg-popup-font').value || "Kanit";
                 appConfig.popupBg = document.getElementById('cfg-popup-bg').value || "#ffffff";
                 appConfig.popupTextColor = document.getElementById('cfg-popup-text-color').value || "#000000";
