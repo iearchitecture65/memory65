@@ -908,33 +908,51 @@
         }
 
         // ==========================================
-        // 4. การแสดง Iframe ของ Google Drive และจับเวลาเมื่อนิ้วแตะ
+        // 4. การแสดง Iframe ของ Google Drive และจับเวลาเมื่อกด Play (ครั้งที่ 2)
         // ==========================================
-        let videoTimerStarted = false;
+        let playClickCount = 0;
+        let lastClickTime = 0;
 
         function startVideoTimer() {
-            if (videoTimerStarted) return; 
-            if (appConfig.popupEnabled === false) return; // ถ้าแอดมินปิดป๊อปอัพไว้ ไม่ต้องจับเวลา
+            if (appConfig.popupEnabled === false) return; 
+            
+            const now = Date.now();
+            // ป้องกันการนับซ้ำซ้อนในเสี้ยววินาทีเดียวจากการเกิด Event พร้อมกัน (Debounce 500ms)
+            if (now - lastClickTime < 500) return; 
+            lastClickTime = now;
 
-            videoTimerStarted = true;
+            playClickCount++;
             
-            const totalDuration = parseInt(appConfig.videoDuration) || 0;
-            const beforeEnd = parseInt(appConfig.popupBefore) || 0;
-            
-            if (totalDuration > 0) {
-                let delaySeconds = totalDuration - beforeEnd;
-                if (delaySeconds < 0) delaySeconds = 0;
+            if (playClickCount === 1) {
+                // ครั้งที่ 1: ผู้ใช้กดเพื่อเปิดโฟกัส/ดึงหน้ากากวิดีโอออก (ยังไม่เล่นจริง)
+                // คืนค่า Focus ให้ Window เพื่อให้ระบบจับการกดครั้งที่ 2 (ปุ่ม Play) ได้อย่างแม่นยำ
+                window.focus();
+                return;
+            }
+
+            if (playClickCount === 2) {
+                // ครั้งที่ 2: ผู้ใช้กด Play และวิดีโอเริ่มโหลดเพื่อเล่นจริง -> เริ่มจับเวลา!
+                const totalDuration = parseInt(appConfig.videoDuration) || 0;
+                const beforeEnd = parseInt(appConfig.popupBefore) || 0;
                 
-                setTimeout(() => {
-                    if (videoContainer.classList.contains('active')) {
-                        openPopupOverlay();
-                    }
-                }, delaySeconds * 1000);
+                if (totalDuration > 0) {
+                    // + 1 วินาทีเผื่อเวลาโหลดวิดีโอ ตามที่ร้องขอ
+                    let delaySeconds = (totalDuration - beforeEnd) + 1;
+                    if (delaySeconds < 0) delaySeconds = 0;
+                    
+                    setTimeout(() => {
+                        if (videoContainer.classList.contains('active')) {
+                            openPopupOverlay();
+                        }
+                    }, delaySeconds * 1000);
+                }
             }
         }
 
         function triggerSuccess() {
             isDetected = true;
+            playClickCount = 0; // รีเซ็ตตัวนับการคลิก
+            
             const flash = document.getElementById('success-flash');
             flash.style.opacity = '1';
             webcam.style.filter = 'blur(15px)';
@@ -956,7 +974,7 @@
                 // ใช้ Iframe ตามเดิมเพื่อความเสถียรบนมือถือ
                 iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen style="width: 100%; height: 100%; border: none;"></iframe>`;
 
-                // ระบบดักจับเมื่อผู้ใช้กด Play
+                // ระบบดักจับการคลิก (Click/Touch) ของผู้ใช้บน Iframe
                 window.focus();
                 window.addEventListener('blur', () => {
                     setTimeout(() => {
@@ -967,15 +985,14 @@
                     }, 100);
                 });
 
-                // สำรองสำหรับมือถือบางรุ่น เมื่อแตะที่จอ
-                videoContainer.addEventListener('touchstart', startVideoTimer, { once: true });
+                // สำรองสำหรับบางอุปกรณ์
+                videoContainer.addEventListener('touchstart', startVideoTimer);
                 
             }, 400);
         }
 
         function openPopupOverlay() {
-            // เราจะไม่เคลียร์ iframe ทิ้งแล้ว เพื่อให้วิดีโอยังอยู่เป็นพื้นหลัง
-
+            // โชว์ป๊อปอัพ
             const pBox = document.getElementById('popup-box');
             const pImg = document.getElementById('popup-display-img');
             const pText = document.getElementById('popup-display-text');
@@ -997,7 +1014,7 @@
             pBtn.style.backgroundColor = appConfig.popupBtnBg;
             pBtn.style.color = appConfig.popupBtnTextColor;
             
-            // เมื่อกดปุ่มในป๊อปอัพ จะเป็นแค่การปิดหน้าต่าง
+            // เมื่อกดปุ่มในป๊อปอัพ จะซ่อนหน้าต่างกลับไปหน้าวิดีโอ (ไม่มีการไปลิงก์อื่น)
             pBtn.onclick = (e) => { 
                 e.preventDefault(); 
                 document.getElementById('popup-container').style.display = 'none'; 
@@ -1073,7 +1090,7 @@
             }
 
             pBtn.innerText = btnText;
-            pBtn.href = "#"; // ไม่มีลิงก์ออก
+            pBtn.href = "#"; // เอาลิงก์ออก
             pBtn.onclick = (e) => e.preventDefault();
             pBtn.style.backgroundColor = btnBg;
             pBtn.style.color = btnTextColor;
@@ -1133,7 +1150,8 @@
                     popupImg: document.getElementById('cfg-popup-img').value.trim(),
                     popupText: document.getElementById('cfg-popup-text').value,
                     popupFont: document.getElementById('cfg-popup-font').value || "Kanit",
-                    popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ตกลง",
+                    popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ปิดหน้าต่าง",
+                    // ลบการบันทึก popupBtnLink ออกจากระบบ
                     popupBg: document.getElementById('cfg-popup-bg').value || "#ffffff",
                     popupTextColor: document.getElementById('cfg-popup-text-color').value || "#000000",
                     popupBtnBg: document.getElementById('cfg-popup-btn-bg').value || "#000000",
