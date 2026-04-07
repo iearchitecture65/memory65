@@ -519,7 +519,6 @@
     </div>
 
     <div id="video-container">
-        <!-- เราต้องใช้ Iframe เท่านั้นเพื่อให้เล่นไฟล์จาก Google Drive บนมือถือ (iOS) ได้โดยไม่เกิดจอสีดำ -->
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
@@ -535,9 +534,6 @@
                 <div class="admin-group">
                     <label>Google Drive Video ID</label>
                     <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
-                    <span class="helper-text" style="color:#d32f2f; margin-top:8px; display:block; line-height: 1.4;">
-                        *ระบบใช้ Google Drive Iframe เพื่อให้เปิดได้ทุกอุปกรณ์ (รวมถึง iPhone) ซึ่งจะไม่สามารถให้เว็บเช็คสถานะคลิปว่าเล่นจบแล้วได้ <b>จึงต้องตั้งเวลาคลิปเอาเองครับ</b>
-                    </span>
                 </div>
                 
                 <div class="admin-group-row">
@@ -553,7 +549,6 @@
 
                 <div class="admin-section-title" style="margin-top: 35px;">💬 การแสดงป๊อปอัพ</div>
                 
-                <!-- Toggle เปิดปิด ป๊อปอัพ -->
                 <div class="admin-group" style="background: #fff3e0; padding: 15px; border-radius: 10px; border: 1px solid #ffcc80;">
                     <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin: 0;">
                         <input type="checkbox" id="cfg-popup-enabled" style="width: 24px; height: 24px; cursor: pointer; accent-color: #f57c00;">
@@ -561,7 +556,6 @@
                     </label>
                 </div>
 
-                <!-- กล่องตั้งค่าป๊อปอัพ (จะจางลงถ้ากดปิด) -->
                 <div id="popup-settings-container" style="transition: opacity 0.3s; margin-top: 25px;">
                     <div class="admin-group">
                         <label>ลิงก์รูปภาพ (ออพชั่นเสริม)</label>
@@ -582,9 +576,16 @@
                             <option value="sans-serif">System Default (ตามระบบ)</option>
                         </select>
                     </div>
-                    <div class="admin-group">
-                        <label>ข้อความบนปุ่ม (ปุ่มนี้เอาไว้กดเพื่อ "ปิด" ป๊อปอัพกลับไปดูวิดีโอ)</label>
-                        <input type="text" id="cfg-popup-btn-text" placeholder="ปิดหน้าต่าง">
+                    
+                    <div class="admin-group-row">
+                        <div class="admin-group">
+                            <label>ข้อความบนปุ่ม</label>
+                            <input type="text" id="cfg-popup-btn-text" placeholder="ดูรูปเพิ่มเติม">
+                        </div>
+                        <div class="admin-group">
+                            <label>ลิงก์เมื่อกดปุ่ม (เช่น เว็บไซต์ หรือใส่ # เพื่อปิด)</label>
+                            <input type="text" id="cfg-popup-btn-link" placeholder="https://google.com">
+                        </div>
                     </div>
 
                     <div class="admin-section-title">🎨 ตั้งค่าสีสัน (กดเลือกสีได้เลย)</div>
@@ -633,7 +634,7 @@
                         <div class="preview-close-x">✕</div>
                         <img id="preview-popup-img" src="" alt="Popup Image">
                         <p id="preview-popup-text"></p>
-                        <a id="preview-popup-btn" href="#" class="popup-btn"></a>
+                        <a id="preview-popup-btn" href="#" class="popup-btn" target="_blank"></a>
                     </div>
                 </div>
             </div>
@@ -641,14 +642,14 @@
         </div>
     </div>
 
-    <!-- Popup Container (ของจริงตอนสแกน) -->
+    <!-- Popup Container -->
     <div id="popup-container">
         <div class="popup-overlay" id="popup-overlay-bg"></div>
         <div class="popup-box" id="popup-box">
             <div class="popup-close-x" id="popup-close-btn">✕</div>
             <img id="popup-display-img" src="" alt="Popup Image">
             <p id="popup-display-text"></p>
-            <a id="popup-display-btn" href="#" class="popup-btn"></a>
+            <a id="popup-display-btn" href="#" target="_blank" class="popup-btn"></a>
         </div>
     </div>
 
@@ -659,7 +660,7 @@
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // ==========================================
-        // 1. Firebase Setup (Realtime Database)
+        // 1. Firebase Setup
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDW8xe8Cf2ytX4HwTrM13dfoJPG3NZrVMo",
@@ -676,7 +677,6 @@
         const analytics = getAnalytics(app);
         const db = getDatabase(app);
         
-        // เก็บข้อมูลใน Database path ชื่อ "app_settings/memory65_config"
         const configRef = ref(db, "app_settings/memory65_config");
 
         const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
@@ -688,6 +688,7 @@
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
             popupBtnText: "ปิดหน้าต่าง",
+            popupBtnLink: "#",
             popupFont: "Kanit",
             popupBg: "#ffffff",
             popupTextColor: "#000000",
@@ -709,32 +710,19 @@
             }
         }
 
-        // ==========================================
-        // 2. ดึงข้อมูลจาก Firebase แบบ Realtime
-        // ==========================================
         onValue(configRef, (snapshot) => {
             if (snapshot.exists()) {
                 appConfig = { ...appConfig, ...snapshot.val() };
             } else {
-                // ครั้งแรกที่เปิดฐานข้อมูล ให้ยัดค่า Default ลงไปเลย
                 set(configRef, appConfig).catch(e => console.log("Init save failed:", e));
             }
-            
             isFirebaseLoaded = true;
-            
             if (isAdminMode) {
                 populateAdminForm();
                 updateAdminLivePreview();
             } else {
                 checkReadyStatus();
             }
-        }, (error) => {
-            console.error("Firebase Read Error:", error);
-            if(isAdminMode) {
-                alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาเช็ค Rules ใน Firebase ว่าตั้งเป็น true หรือยัง");
-            }
-            isFirebaseLoaded = true;
-            checkReadyStatus();
         });
 
 
@@ -767,7 +755,7 @@
         const BRIGHTNESS_THRESHOLD = 0.18; 
         const VARIANCE_THRESHOLD = 0.05; 
         let detectionConfidence = 0;
-        const CONFIDENCE_REQUIRED = 15; 
+        const CONFIDENCE_REQUIRED = 8; 
 
         function updateStatus(msg, color = "#000") {
             if (lastStatusMsg === msg) return;
@@ -902,47 +890,35 @@
                 } else {
                     detectionConfidence = 0; lockIndicator.classList.remove('scan-active');
                 }
-                setTimeout(() => requestAnimationFrame(predict), 100);
+                setTimeout(() => requestAnimationFrame(predict), 50);
             } else if (!isDetected) requestAnimationFrame(predict);
         }
 
         // ==========================================
-        // 4. การแสดง Iframe ของ Google Drive และจับเวลาเมื่อกด Play (ครั้งที่ 2)
+        // 4. การแสดง Iframe ของ Google Drive 
         // ==========================================
         let playClickCount = 0;
         let lastClickTime = 0;
 
         function startVideoTimer() {
             if (appConfig.popupEnabled === false) return; 
-            
             const now = Date.now();
-            // ป้องกันการนับซ้ำซ้อนในเสี้ยววินาทีเดียวจากการเกิด Event พร้อมกัน (Debounce 500ms)
             if (now - lastClickTime < 500) return; 
             lastClickTime = now;
-
             playClickCount++;
             
             if (playClickCount === 1) {
-                // ครั้งที่ 1: ผู้ใช้กดเพื่อเปิดโฟกัส/ดึงหน้ากากวิดีโอออก (ยังไม่เล่นจริง)
-                // คืนค่า Focus ให้ Window เพื่อให้ระบบจับการกดครั้งที่ 2 (ปุ่ม Play) ได้อย่างแม่นยำ
                 window.focus();
                 return;
             }
-
             if (playClickCount === 2) {
-                // ครั้งที่ 2: ผู้ใช้กด Play และวิดีโอเริ่มโหลดเพื่อเล่นจริง -> เริ่มจับเวลา!
                 const totalDuration = parseInt(appConfig.videoDuration) || 0;
                 const beforeEnd = parseInt(appConfig.popupBefore) || 0;
-                
                 if (totalDuration > 0) {
-                    // + 1 วินาทีเผื่อเวลาโหลดวิดีโอ ตามที่ร้องขอ
                     let delaySeconds = (totalDuration - beforeEnd) + 1;
                     if (delaySeconds < 0) delaySeconds = 0;
-                    
                     setTimeout(() => {
-                        if (videoContainer.classList.contains('active')) {
-                            openPopupOverlay();
-                        }
+                        if (videoContainer.classList.contains('active')) openPopupOverlay();
                     }, delaySeconds * 1000);
                 }
             }
@@ -950,8 +926,7 @@
 
         function triggerSuccess() {
             isDetected = true;
-            playClickCount = 0; // รีเซ็ตตัวนับการคลิก
-            
+            playClickCount = 0; 
             const flash = document.getElementById('success-flash');
             flash.style.opacity = '1';
             webcam.style.filter = 'blur(15px)';
@@ -966,32 +941,22 @@
                 cameraContainer.style.display = 'none';
                 flash.style.opacity = '0';
                 videoContainer.classList.add('active');
-                
                 const currentDriveId = appConfig.driveId || DEFAULT_DRIVE_ID;
                 const iframeTarget = document.getElementById('iframe-target');
-                
-                // ใช้ Iframe ตามเดิมเพื่อความเสถียรบนมือถือ
                 iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen style="width: 100%; height: 100%; border: none;"></iframe>`;
 
-                // ระบบดักจับการคลิก (Click/Touch) ของผู้ใช้บน Iframe
                 window.focus();
                 window.addEventListener('blur', () => {
                     setTimeout(() => {
                         const activeEl = document.activeElement;
-                        if (activeEl && activeEl.tagName === 'IFRAME') {
-                            startVideoTimer();
-                        }
+                        if (activeEl && activeEl.tagName === 'IFRAME') startVideoTimer();
                     }, 100);
                 });
-
-                // สำรองสำหรับบางอุปกรณ์
                 videoContainer.addEventListener('touchstart', startVideoTimer);
-                
             }, 400);
         }
 
         function openPopupOverlay() {
-            // โชว์ป๊อปอัพ
             const pBox = document.getElementById('popup-box');
             const pImg = document.getElementById('popup-display-img');
             const pText = document.getElementById('popup-display-text');
@@ -1010,19 +975,19 @@
             }
 
             pBtn.innerText = appConfig.popupBtnText;
+            pBtn.href = appConfig.popupBtnLink || "#";
             pBtn.style.backgroundColor = appConfig.popupBtnBg;
             pBtn.style.color = appConfig.popupBtnTextColor;
             
-            // เมื่อกดปุ่มในป๊อปอัพ จะซ่อนหน้าต่างกลับไปหน้าวิดีโอ (ไม่มีการไปลิงก์อื่น)
             pBtn.onclick = (e) => { 
-                e.preventDefault(); 
-                document.getElementById('popup-container').style.display = 'none'; 
+                if (pBtn.getAttribute('href') === "#") {
+                    e.preventDefault(); 
+                    document.getElementById('popup-container').style.display = 'none'; 
+                }
             };
-
             document.getElementById('popup-container').style.display = 'flex';
         }
 
-        // เมื่อกดกากบาท ให้ปิดป๊อปอัพ กลับไปวิดีโอเดิม
         document.getElementById('popup-close-btn').onclick = () => {
             document.getElementById('popup-container').style.display = 'none';
         };
@@ -1034,16 +999,14 @@
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
             document.getElementById('cfg-video-duration').value = appConfig.videoDuration !== undefined ? appConfig.videoDuration : 11;
             document.getElementById('cfg-popup-before').value = appConfig.popupBefore !== undefined ? appConfig.popupBefore : 3;
-            
-            // ระบบสวิตช์เปิดปิด
             const isPopupEnabled = appConfig.popupEnabled !== false;
             document.getElementById('cfg-popup-enabled').checked = isPopupEnabled;
             updatePopupSettingsVisibility(isPopupEnabled);
-
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
             document.getElementById('cfg-popup-font').value = appConfig.popupFont;
             document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
+            document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink || "#";
 
             setAdminColorValue(appConfig.popupBg, 'cfg-popup-bg', 'cfg-popup-bg-color');
             setAdminColorValue(appConfig.popupTextColor, 'cfg-popup-text-color', 'cfg-popup-text-color-picker');
@@ -1056,9 +1019,7 @@
             const previewSection = document.querySelector('.admin-preview-section');
             container.style.opacity = isEnabled ? '1' : '0.4';
             container.style.pointerEvents = isEnabled ? 'auto' : 'none';
-            if(previewSection) {
-                previewSection.style.opacity = isEnabled ? '1' : '0.3';
-            }
+            if(previewSection) previewSection.style.opacity = isEnabled ? '1' : '0.3';
         }
 
         function updateAdminLivePreview() {
@@ -1070,7 +1031,8 @@
             const text = document.getElementById('cfg-popup-text').value;
             const imgUrl = document.getElementById('cfg-popup-img').value.trim();
             const font = document.getElementById('cfg-popup-font').value || "Kanit";
-            const btnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
+            const btnT = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
+            const btnL = document.getElementById('cfg-popup-btn-link').value || "#";
             const bgColor = document.getElementById('cfg-popup-bg').value || "#ffffff";
             const textColor = document.getElementById('cfg-popup-text-color').value || "#000000";
             const btnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
@@ -1082,15 +1044,13 @@
             pText.innerText = text;
 
             if (imgUrl !== "") {
-                pImg.src = imgUrl;
-                pImg.style.display = 'block';
+                pImg.src = imgUrl; pImg.style.display = 'block';
             } else {
                 pImg.style.display = 'none';
             }
 
-            pBtn.innerText = btnText;
-            pBtn.href = "#"; // เอาลิงก์ออก
-            pBtn.onclick = (e) => e.preventDefault();
+            pBtn.innerText = btnT;
+            pBtn.href = btnL;
             pBtn.style.backgroundColor = btnBg;
             pBtn.style.color = btnTextColor;
         }
@@ -1098,17 +1058,8 @@
         function syncColors(pickerId, textId) {
             const picker = document.getElementById(pickerId);
             const text = document.getElementById(textId);
-            
-            picker.addEventListener('input', () => { 
-                text.value = picker.value; 
-                updateAdminLivePreview();
-            });
-            text.addEventListener('input', () => {
-                if (/^#[0-9A-F]{6}$/i.test(text.value)) {
-                    picker.value = text.value;
-                }
-                updateAdminLivePreview();
-            });
+            picker.addEventListener('input', () => { text.value = picker.value; updateAdminLivePreview(); });
+            text.addEventListener('input', () => { if (/^#[0-9A-F]{6}$/i.test(text.value)) { picker.value = text.value; } updateAdminLivePreview(); });
         }
         
         function setAdminColorValue(hexCode, textId, pickerId) {
@@ -1120,27 +1071,17 @@
         if (isAdminMode) {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
-
             syncColors('cfg-popup-bg-color', 'cfg-popup-bg');
             syncColors('cfg-popup-text-color-picker', 'cfg-popup-text-color');
             syncColors('cfg-popup-btn-bg-picker', 'cfg-popup-btn-bg');
             syncColors('cfg-popup-btn-text-color-picker', 'cfg-popup-btn-text-color');
-
-            document.getElementById('cfg-popup-enabled').addEventListener('change', (e) => {
-                updatePopupSettingsVisibility(e.target.checked);
-            });
-
+            document.getElementById('cfg-popup-enabled').addEventListener('change', (e) => updatePopupSettingsVisibility(e.target.checked));
             const adminInputs = document.querySelectorAll('#admin-panel input, #admin-panel textarea, #admin-panel select');
-            adminInputs.forEach(input => {
-                input.addEventListener('input', updateAdminLivePreview);
-                input.addEventListener('change', updateAdminLivePreview);
-            });
+            adminInputs.forEach(input => { input.addEventListener('input', updateAdminLivePreview); input.addEventListener('change', updateAdminLivePreview); });
 
             document.getElementById('btn-save-admin').onclick = async () => {
                 const btn = document.getElementById('btn-save-admin');
-                btn.innerText = "กำลังบันทึก...";
-                btn.disabled = true;
-
+                btn.innerText = "กำลังบันทึก..."; btn.disabled = true;
                 const newConfig = {
                     driveId: document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID,
                     videoDuration: parseInt(document.getElementById('cfg-video-duration').value) || 0,
@@ -1149,32 +1090,24 @@
                     popupImg: document.getElementById('cfg-popup-img').value.trim(),
                     popupText: document.getElementById('cfg-popup-text').value,
                     popupFont: document.getElementById('cfg-popup-font').value || "Kanit",
-                    popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ปิดหน้าต่าง",
+                    popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ตกลง",
+                    popupBtnLink: document.getElementById('cfg-popup-btn-link').value || "#",
                     popupBg: document.getElementById('cfg-popup-bg').value || "#ffffff",
                     popupTextColor: document.getElementById('cfg-popup-text-color').value || "#000000",
                     popupBtnBg: document.getElementById('cfg-popup-btn-bg').value || "#000000",
                     popupBtnTextColor: document.getElementById('cfg-popup-btn-text-color').value || "#ffffff"
                 };
-
                 try {
                     await set(configRef, newConfig);
-                    alert('บันทึกการตั้งค่าสำเร็จ! ข้อมูลอัปเดตแบบเรียลไทม์ไปทุกเครื่องแล้ว');
-                    window.location.href = window.location.pathname;
+                    alert('บันทึกสำเร็จ!'); window.location.href = window.location.pathname;
                 } catch (error) {
-                    console.error("Firebase Save Error:", error);
-                    alert('เกิดข้อผิดพลาดในการบันทึก (อย่าลืมเปิด Rules เป็น true): ' + error.message);
-                    btn.innerText = "💾 บันทึกการตั้งค่า";
-                    btn.disabled = false;
+                    alert('Error: ' + error.message); btn.innerText = "💾 บันทึกการตั้งค่า"; btn.disabled = false;
                 }
             };
-
-            document.getElementById('btn-close-admin').onclick = () => {
-                window.location.href = window.location.pathname; 
-            };
+            document.getElementById('btn-close-admin').onclick = () => window.location.href = window.location.pathname; 
         } else {
             initAI();
         }
-
     </script>
 </body>
 </html>
