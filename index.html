@@ -282,25 +282,6 @@
         }
         .scan-active { background: #000 !important; }
 
-        /* ปุ่มปิดวิดีโอ (เพื่อเปิด Popup) */
-        #finish-video-btn {
-            position: absolute;
-            top: 20px; right: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 10px 20px;
-            border-radius: 30px;
-            z-index: 1001;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.9rem;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        #finish-video-btn:hover { background: rgba(0,0,0,0.8); border-color: #fff; }
-
         /* =========================================
            Admin Panel Redesign with Live Preview
            ========================================= */
@@ -512,7 +493,7 @@
             <img class="grayscale-overlay" src="memory-picture.JPG">
         </div>
         <button class="btn-start" id="start-btn" disabled>
-            <span id="btn-text">กำลังรอ</span><span class="dots"></span>
+            <span id="btn-text">กำลังโหลดข้อมูล...</span><span class="dots"></span>
         </button>
     </div>
 
@@ -537,18 +518,17 @@
     </div>
 
     <div id="video-container">
-        <!-- ปุ่มเพื่อปิดวิดีโอและเปิดป๊อปอัพ -->
-        <button id="finish-video-btn">ดูจบแล้ว (เสร็จสิ้น)</button>
+        <!-- ปุ่มปิดวิดีโอแบบแมนวลถูกนำออกไปแล้วตามที่ร้องขอ ระบบจะใช้การจับเวลาแทน -->
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
-    <!-- Admin Panel (โฉมใหม่ + Live Preview) -->
+    <!-- Admin Panel -->
     <div id="admin-panel">
         <div class="admin-layout">
             
             <!-- ฝั่งซ้าย: ฟอร์มการตั้งค่า -->
             <div class="admin-form-section">
-                <div class="admin-title">⚙️ ระบบตั้งค่า Admin</div>
+                <div class="admin-title">⚙️ ระบบตั้งค่า Admin (อัปเดตเรียลไทม์)</div>
                 
                 <div class="admin-section-title">🎥 ตั้งค่าวิดีโอ</div>
                 <div class="admin-group">
@@ -559,7 +539,7 @@
                     <div class="admin-group">
                         <label>ความยาวคลิป (วินาที)</label>
                         <input type="number" id="cfg-video-duration" placeholder="เช่น 60">
-                        <span class="helper-text">*ใส่ 0 ถ้าไม่ต้องการตั้งเวลา</span>
+                        <span class="helper-text">*ต้องใส่เพื่อให้ป๊อปอัพเด้งอัตโนมัติ</span>
                     </div>
                     <div class="admin-group">
                         <label>เด้งก่อนจบ (วินาที)</label>
@@ -663,14 +643,38 @@
         </div>
     </div>
 
-    <script>
-        // --- ส่วนที่ปรับปรุงเพื่อดึงค่าจากระบบ Admin ---
-        const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
+    <!-- ระบบการทำงานหลัก และ Firebase Integration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // ==========================================
+        // 1. Firebase Setup (จาก Config ของคุณ)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDW8xe8Cf2ytX4HwTrM13dfoJPG3NZrVMo",
+            authDomain: "memory65-f8943.firebaseapp.com",
+            databaseURL: "https://memory65-f8943-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "memory65-f8943",
+            storageBucket: "memory65-f8943.firebasestorage.app",
+            messagingSenderId: "559460125390",
+            appId: "1:559460125390:web:da102418525851401cde9f",
+            measurementId: "G-SMNEEPX6JE"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
         
-        // ดึงการตั้งค่าจาก localStorage ถ้าไม่มีให้ใช้ค่าเริ่มต้น
-        let appConfig = JSON.parse(localStorage.getItem('memory65_config')) || {
+        // ข้อมูลจะถูกเก็บไว้ที่ Collection "app_settings" Document "memory65_config"
+        const configDoc = doc(db, "app_settings", "memory65_config");
+
+        // ค่า Default เริ่มต้น
+        const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
+        let appConfig = {
             driveId: DEFAULT_DRIVE_ID,
-            videoDuration: 0,
+            videoDuration: 60,
             popupBefore: 10,
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
@@ -683,10 +687,58 @@
             popupBtnTextColor: "#ffffff"
         };
 
-        const DRIVE_ID = appConfig.driveId;
-        const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
-        // ------------------------------------------
+        // ตรวจสอบสถานะโหลดของระบบ
+        let isFirebaseLoaded = false;
+        let isModelLoaded = false;
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdminMode = urlParams.has('admin');
 
+        function checkReadyStatus() {
+            if (isFirebaseLoaded && isModelLoaded && !isAdminMode) {
+                btnText.innerText = 'เริ่มสแกน';
+                const buttonDots = startBtn.querySelector('.dots');
+                if (buttonDots) buttonDots.classList.remove('dots');
+                startBtn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 2. ดึงข้อมูลจาก Firebase แบบ Realtime
+        // ==========================================
+        signInAnonymously(auth).then(() => {
+            onSnapshot(configDoc, (snapshot) => {
+                if (snapshot.exists()) {
+                    // ถ้ามีข้อมูลในฐานข้อมูลอยู่แล้ว ให้เอามาใช้งาน
+                    appConfig = { ...appConfig, ...snapshot.data() };
+                } else {
+                    // ถ้ายังไม่มี (ใช้งานครั้งแรก) ให้สร้างขึ้นมา
+                    setDoc(configDoc, appConfig).catch(console.error);
+                }
+                
+                isFirebaseLoaded = true;
+                
+                if (isAdminMode) {
+                    populateAdminForm();
+                    updateAdminLivePreview();
+                } else {
+                    checkReadyStatus();
+                }
+            }, (error) => {
+                console.error("Firebase Snapshot Error:", error);
+                // ถ้ามี error ก็ให้ใช้ค่า default ต่อไป
+                isFirebaseLoaded = true;
+                checkReadyStatus();
+            });
+        }).catch(error => {
+            console.error("Firebase Auth Error:", error);
+            isFirebaseLoaded = true;
+            checkReadyStatus();
+        });
+
+
+        // ==========================================
+        // 3. ระบบ AI สแกนภาพ (คงเดิม 100%)
+        // ==========================================
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
         const btnText = document.getElementById('btn-text');
@@ -723,16 +775,12 @@
             subStatusText.innerText = msg;
         }
 
-        async function init() {
+        async function initAI() {
             try {
-                // Ensure image is ready
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
                     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-                    return new Promise(r => { 
-                        img.onload = r; 
-                        img.onerror = r; 
-                    });
+                    return new Promise(r => { img.onload = r; img.onerror = r; });
                 }));
 
                 if (targetImg.naturalWidth === 0) throw new Error("Invalid image");
@@ -758,13 +806,11 @@
                 targetFeatures = results.feat;
                 targetGridData = results.grids;
                 
-                btnText.innerText = 'เริ่มสแกน';
-                const buttonDots = startBtn.querySelector('.dots');
-                if (buttonDots) buttonDots.classList.remove('dots');
-                startBtn.disabled = false;
+                isModelLoaded = true;
+                checkReadyStatus();
             } catch (e) { 
                 console.error(e);
-                btnText.innerText = "เกิดข้อผิดพลาดในการโหลด"; 
+                btnText.innerText = "เกิดข้อผิดพลาดในการโหลด AI"; 
             }
         }
 
@@ -859,6 +905,9 @@
             } else if (!isDetected) requestAnimationFrame(predict);
         }
 
+        // ==========================================
+        // 4. การจัดการวิดีโอและระบบเด้งป๊อปอัพอัตโนมัติ
+        // ==========================================
         function triggerSuccess() {
             isDetected = true;
             const flash = document.getElementById('success-flash');
@@ -875,9 +924,12 @@
                 cameraContainer.style.display = 'none';
                 flash.style.opacity = '0';
                 videoContainer.classList.add('active');
-                iframeTarget.innerHTML = `<iframe src="${PREVIEW_URL}" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
                 
-                // --- ระบบตั้งเวลา Popup อัตโนมัติ ---
+                // โหลดวิดีโอจาก Drive โดยใช้ค่าที่เซฟใน Firebase
+                const currentDriveId = appConfig.driveId || DEFAULT_DRIVE_ID;
+                iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                
+                // ระบบตั้งเวลา Popup อัตโนมัติเท่านั้น (ปุ่มแมนวลถูกตัดออก)
                 const totalDuration = parseInt(appConfig.videoDuration) || 0;
                 const beforeEnd = parseInt(appConfig.popupBefore) || 0;
                 
@@ -891,12 +943,10 @@
                         }
                     }, delaySeconds * 1000);
                 }
-                // ------------------------------------
                 
             }, 400);
         }
 
-        // --- ระบบจัดการ Popup และ Admin ---
         function openPopupOverlay() {
             iframeTarget.innerHTML = '';
             videoContainer.classList.remove('active');
@@ -930,20 +980,35 @@
             document.getElementById('popup-container').style.display = 'flex';
         }
 
-        document.getElementById('finish-video-btn').onclick = openPopupOverlay;
-
         document.getElementById('popup-close-btn').onclick = () => {
             location.reload(); 
         };
 
-        // --- ฟังก์ชันอัปเดต Live Preview ในแอดมิน ---
+        // ==========================================
+        // 5. ระบบหน้า Admin (?admin)
+        // ==========================================
+        function populateAdminForm() {
+            document.getElementById('cfg-drive-id').value = appConfig.driveId;
+            document.getElementById('cfg-video-duration').value = appConfig.videoDuration || 0;
+            document.getElementById('cfg-popup-before').value = appConfig.popupBefore || 10;
+            document.getElementById('cfg-popup-img').value = appConfig.popupImg;
+            document.getElementById('cfg-popup-text').value = appConfig.popupText;
+            document.getElementById('cfg-popup-font').value = appConfig.popupFont;
+            document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
+            document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink;
+
+            setAdminColorValue(appConfig.popupBg, 'cfg-popup-bg', 'cfg-popup-bg-color');
+            setAdminColorValue(appConfig.popupTextColor, 'cfg-popup-text-color', 'cfg-popup-text-color-picker');
+            setAdminColorValue(appConfig.popupBtnBg, 'cfg-popup-btn-bg', 'cfg-popup-btn-bg-picker');
+            setAdminColorValue(appConfig.popupBtnTextColor, 'cfg-popup-btn-text-color', 'cfg-popup-btn-text-color-picker');
+        }
+
         function updateAdminLivePreview() {
             const pBox = document.getElementById('preview-popup-box');
             const pImg = document.getElementById('preview-popup-img');
             const pText = document.getElementById('preview-popup-text');
             const pBtn = document.getElementById('preview-popup-btn');
 
-            // ดึงค่าจากฟอร์ม
             const text = document.getElementById('cfg-popup-text').value;
             const imgUrl = document.getElementById('cfg-popup-img').value.trim();
             const font = document.getElementById('cfg-popup-font').value || "Kanit";
@@ -954,7 +1019,6 @@
             const btnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
             const btnTextColor = document.getElementById('cfg-popup-btn-text-color').value || "#ffffff";
 
-            // ใส่ค่าลงในกล่อง Preview
             pBox.style.backgroundColor = bgColor;
             pBox.style.fontFamily = font;
             pText.style.color = textColor;
@@ -973,18 +1037,14 @@
             pBtn.style.color = btnTextColor;
         }
 
-        // --- Color Picker Sync Logic ---
         function syncColors(pickerId, textId) {
             const picker = document.getElementById(pickerId);
             const text = document.getElementById(textId);
             
-            // เมื่อจิ้มเลือกสี อัปเดตช่องข้อความ และอัปเดตพรีวิว
             picker.addEventListener('input', () => { 
                 text.value = picker.value; 
                 updateAdminLivePreview();
             });
-            
-            // เมื่อพิมพ์รหัสสี อัปเดตตัวเลือกสี และอัปเดตพรีวิว
             text.addEventListener('input', () => {
                 if (/^#[0-9A-F]{6}$/i.test(text.value)) {
                     picker.value = text.value;
@@ -992,77 +1052,68 @@
                 updateAdminLivePreview();
             });
         }
-        syncColors('cfg-popup-bg-color', 'cfg-popup-bg');
-        syncColors('cfg-popup-text-color-picker', 'cfg-popup-text-color');
-        syncColors('cfg-popup-btn-bg-picker', 'cfg-popup-btn-bg');
-        syncColors('cfg-popup-btn-text-color-picker', 'cfg-popup-btn-text-color');
-
-        // ฟังก์ชันช่วยเซ็ตค่าสีลงไปในช่อง
+        
         function setAdminColorValue(hexCode, textId, pickerId) {
             const hex = /^#[0-9A-F]{6}$/i.test(hexCode) ? hexCode : '#000000';
             document.getElementById(textId).value = hexCode; 
             document.getElementById(pickerId).value = hex;   
         }
 
-        // ตรวจสอบ URL ว่าเข้าสู่โหมด Admin หรือไม่
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('A') || window.location.hash.includes('A')) {
+        // เช็คว่าเป็นโหมดแอดมินหรือผู้ใช้งาน
+        if (isAdminMode) {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
 
-            // เติมข้อมูลลงช่องกรอก
-            document.getElementById('cfg-drive-id').value = appConfig.driveId;
-            document.getElementById('cfg-video-duration').value = appConfig.videoDuration || 0;
-            document.getElementById('cfg-popup-before').value = appConfig.popupBefore || 10;
-            document.getElementById('cfg-popup-img').value = appConfig.popupImg;
-            document.getElementById('cfg-popup-text').value = appConfig.popupText;
-            document.getElementById('cfg-popup-font').value = appConfig.popupFont;
-            document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
-            document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink;
+            syncColors('cfg-popup-bg-color', 'cfg-popup-bg');
+            syncColors('cfg-popup-text-color-picker', 'cfg-popup-text-color');
+            syncColors('cfg-popup-btn-bg-picker', 'cfg-popup-btn-bg');
+            syncColors('cfg-popup-btn-text-color-picker', 'cfg-popup-btn-text-color');
 
-            // เซ็ตข้อมูลสีให้ตรงทั้งช่องข้อความและตัวเลือกสี
-            setAdminColorValue(appConfig.popupBg, 'cfg-popup-bg', 'cfg-popup-bg-color');
-            setAdminColorValue(appConfig.popupTextColor, 'cfg-popup-text-color', 'cfg-popup-text-color-picker');
-            setAdminColorValue(appConfig.popupBtnBg, 'cfg-popup-btn-bg', 'cfg-popup-btn-bg-picker');
-            setAdminColorValue(appConfig.popupBtnTextColor, 'cfg-popup-btn-text-color', 'cfg-popup-btn-text-color-picker');
-
-            // ผูก Event Listener ทุกช่องเพื่อให้ Live Preview อัปเดตทันทีเมื่อพิมพ์หรือเลือก
             const adminInputs = document.querySelectorAll('#admin-panel input, #admin-panel textarea, #admin-panel select');
             adminInputs.forEach(input => {
                 input.addEventListener('input', updateAdminLivePreview);
                 input.addEventListener('change', updateAdminLivePreview);
             });
 
-            // เรียกทำงานครั้งแรกตอนเปิดหน้าแอดมิน เพื่อให้ตัวอย่างมีข้อมูล
-            updateAdminLivePreview();
+            // บันทึกข้อมูลไปยัง Firebase
+            document.getElementById('btn-save-admin').onclick = async () => {
+                const btn = document.getElementById('btn-save-admin');
+                btn.innerText = "กำลังบันทึก...";
+                btn.disabled = true;
 
-            // บันทึก
-            document.getElementById('btn-save-admin').onclick = () => {
-                appConfig.driveId = document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID;
-                appConfig.videoDuration = parseInt(document.getElementById('cfg-video-duration').value) || 0;
-                appConfig.popupBefore = parseInt(document.getElementById('cfg-popup-before').value) || 0;
-                appConfig.popupImg = document.getElementById('cfg-popup-img').value.trim();
-                appConfig.popupText = document.getElementById('cfg-popup-text').value;
-                appConfig.popupFont = document.getElementById('cfg-popup-font').value || "Kanit";
-                appConfig.popupBtnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
-                appConfig.popupBtnLink = document.getElementById('cfg-popup-btn-link').value || "#";
-                
-                appConfig.popupBg = document.getElementById('cfg-popup-bg').value || "#ffffff";
-                appConfig.popupTextColor = document.getElementById('cfg-popup-text-color').value || "#000000";
-                appConfig.popupBtnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
-                appConfig.popupBtnTextColor = document.getElementById('cfg-popup-btn-text-color').value || "#ffffff";
+                const newConfig = {
+                    driveId: document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID,
+                    videoDuration: parseInt(document.getElementById('cfg-video-duration').value) || 0,
+                    popupBefore: parseInt(document.getElementById('cfg-popup-before').value) || 0,
+                    popupImg: document.getElementById('cfg-popup-img').value.trim(),
+                    popupText: document.getElementById('cfg-popup-text').value,
+                    popupFont: document.getElementById('cfg-popup-font').value || "Kanit",
+                    popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ตกลง",
+                    popupBtnLink: document.getElementById('cfg-popup-btn-link').value || "#",
+                    popupBg: document.getElementById('cfg-popup-bg').value || "#ffffff",
+                    popupTextColor: document.getElementById('cfg-popup-text-color').value || "#000000",
+                    popupBtnBg: document.getElementById('cfg-popup-btn-bg').value || "#000000",
+                    popupBtnTextColor: document.getElementById('cfg-popup-btn-text-color').value || "#ffffff"
+                };
 
-                localStorage.setItem('memory65_config', JSON.stringify(appConfig));
-                alert('บันทึกการตั้งค่าสำเร็จ! หน้าเว็บจะทำการโหลดใหม่');
-                window.location.href = window.location.pathname;
+                try {
+                    await setDoc(configDoc, newConfig);
+                    alert('บันทึกการตั้งค่าสำเร็จ! ข้อมูลอัปเดตแบบเรียลไทม์ไปทุกเครื่องแล้ว');
+                    window.location.href = window.location.pathname;
+                } catch (error) {
+                    console.error("Firebase Save Error:", error);
+                    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+                    btn.innerText = "💾 บันทึกการตั้งค่า";
+                    btn.disabled = false;
+                }
             };
 
-            // ปิดโหมดแอดมิน
             document.getElementById('btn-close-admin').onclick = () => {
                 window.location.href = window.location.pathname; 
             };
         } else {
-            init();
+            // โหมดผู้ใช้งาน เริ่มโหลด AI
+            initAI();
         }
 
     </script>
