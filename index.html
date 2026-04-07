@@ -290,6 +290,93 @@
             background: #eee;
         }
         .scan-active { background: #000 !important; }
+
+
+        /* ---------------------------------------------------
+           ส่วนที่เพิ่มใหม่: CSS สำหรับ Admin Panel, Popup และปุ่มปิดวิดีโอ 
+           --------------------------------------------------- */
+        
+        /* ปุ่มปิดวิดีโอ (เพื่อเปิด Popup) */
+        #finish-video-btn {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 30px;
+            z-index: 1001;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        #finish-video-btn:hover { background: rgba(0,0,0,0.8); border-color: #fff; }
+
+        /* Admin Panel */
+        #admin-panel {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f4f4f9; z-index: 9999; overflow-y: auto;
+            padding: 30px 20px; font-family: 'Kanit', sans-serif;
+            display: none; color: #333;
+        }
+        .admin-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 25px; text-align: center; color: #000; }
+        .admin-group { margin-bottom: 18px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .admin-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+        .admin-group input, .admin-group textarea { 
+            width: 100%; padding: 12px; border: 1px solid #ddd; 
+            border-radius: 8px; font-family: inherit; font-size: 1rem;
+            outline: none; transition: border 0.3s;
+        }
+        .admin-group input:focus, .admin-group textarea:focus { border-color: #000; }
+        .admin-btn { 
+            background: #000; color: #fff; padding: 14px; 
+            width: 100%; max-width: 500px; border: none; 
+            border-radius: 8px; font-size: 1rem; cursor: pointer; 
+            margin: 10px auto; display: block; font-family: 'Kanit'; transition: 0.3s;
+        }
+        .admin-btn:hover { background: #333; }
+        .admin-btn-close { background: #dc3545; }
+        .admin-btn-close:hover { background: #c82333; }
+
+        /* Popup Container */
+        #popup-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; justify-content: center; align-items: center;
+            z-index: 8000; padding: 20px;
+        }
+        .popup-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(3px);
+        }
+        .popup-box {
+            position: relative; width: 100%; max-width: 380px;
+            background: #fff; border-radius: 20px; padding: 35px 25px;
+            text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            z-index: 8001;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .popup-box img { max-width: 100%; border-radius: 12px; margin-bottom: 20px; display: none; max-height: 200px; object-fit: contain; margin-left: auto; margin-right: auto; }
+        .popup-box p { font-size: 1.1rem; margin-bottom: 25px; white-space: pre-wrap; line-height: 1.5; margin-top:0; }
+        .popup-box a.popup-btn { 
+            display: inline-block; padding: 14px 35px; border-radius: 100px; 
+            text-decoration: none; font-weight: 600; font-size: 1rem; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: transform 0.2s;
+        }
+        .popup-box a.popup-btn:active { transform: scale(0.95); }
+        .popup-close-x {
+            position: absolute; top: 15px; right: 15px;
+            width: 30px; height: 30px; background: #eee; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-weight: bold; color: #555;
+        }
+
     </style>
 </head>
 <body>
@@ -333,13 +420,90 @@
     </div>
 
     <div id="video-container">
+        <!-- ปุ่มเพื่อปิดวิดีโอและเปิดป๊อปอัพ -->
+        <button id="finish-video-btn">ดูจบแล้ว (เสร็จสิ้น)</button>
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
+    <!-- ส่วนที่เพิ่มใหม่: Admin Panel -->
+    <div id="admin-panel">
+        <div class="admin-title">⚙️ ระบบตั้งค่า (Admin)</div>
+        <div class="admin-group">
+            <label>Google Drive Video ID</label>
+            <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
+        </div>
+        <div class="admin-group">
+            <label>ลิงก์รูปภาพในป๊อปอัพ (เว้นว่างได้ถ้าไม่ต้องการใส่)</label>
+            <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg">
+        </div>
+        <div class="admin-group">
+            <label>ข้อความในป๊อปอัพ</label>
+            <textarea id="cfg-popup-text" rows="3" placeholder="ข้อความที่จะแสดงเมื่อดูวิดีโอจบ"></textarea>
+        </div>
+        <div class="admin-group">
+            <label>ข้อความบนปุ่ม</label>
+            <input type="text" id="cfg-popup-btn-text" placeholder="ดูรูปเพิ่มเติม">
+        </div>
+        <div class="admin-group">
+            <label>ลิงก์ของปุ่ม (เมื่อกดปุ่มจะไปที่ไหน)</label>
+            <input type="text" id="cfg-popup-btn-link" placeholder="https://google.com">
+        </div>
+        <div class="admin-group">
+            <label>ชื่อฟอนต์ (เช่น Kanit, Tahoma, Arial)</label>
+            <input type="text" id="cfg-popup-font" placeholder="Kanit">
+        </div>
+        <div class="admin-group">
+            <label>สีพื้นหลังป๊อปอัพ (เช่น #ffffff หรือ white)</label>
+            <input type="text" id="cfg-popup-bg" placeholder="#ffffff">
+        </div>
+        <div class="admin-group">
+            <label>สีตัวอักษรป๊อปอัพ</label>
+            <input type="text" id="cfg-popup-text-color" placeholder="#000000">
+        </div>
+        <div class="admin-group">
+            <label>สีพื้นหลังปุ่ม</label>
+            <input type="text" id="cfg-popup-btn-bg" placeholder="#000000">
+        </div>
+        <div class="admin-group">
+            <label>สีข้อความบนปุ่ม</label>
+            <input type="text" id="cfg-popup-btn-text-color" placeholder="#ffffff">
+        </div>
+        <button class="admin-btn" id="btn-save-admin">บันทึกการตั้งค่า</button>
+        <button class="admin-btn admin-btn-close" id="btn-close-admin">ปิดหน้าตั้งค่า (กลับไปสแกนรูป)</button>
+    </div>
+
+    <!-- ส่วนที่เพิ่มใหม่: Popup Container -->
+    <div id="popup-container">
+        <div class="popup-overlay" id="popup-overlay-bg"></div>
+        <div class="popup-box" id="popup-box">
+            <div class="popup-close-x" id="popup-close-btn">✕</div>
+            <img id="popup-display-img" src="" alt="Popup Image">
+            <p id="popup-display-text"></p>
+            <a id="popup-display-btn" href="#" target="_blank" class="popup-btn"></a>
+        </div>
+    </div>
+
     <script>
-        // เปลี่ยน ID เป็นลิงก์ใหม่ที่คุณส่งมา
-        const DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
+        // --- ส่วนที่ปรับปรุงเพื่อดึงค่าจากระบบ Admin ---
+        const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
+        
+        // ดึงการตั้งค่าจาก localStorage ถ้าไม่มีให้ใช้ค่าเริ่มต้น
+        let appConfig = JSON.parse(localStorage.getItem('memory65_config')) || {
+            driveId: DEFAULT_DRIVE_ID,
+            popupImg: "",
+            popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
+            popupBtnText: "กลับไปหน้าแรก",
+            popupBtnLink: "#",
+            popupFont: "Kanit",
+            popupBg: "#ffffff",
+            popupTextColor: "#000000",
+            popupBtnBg: "#000000",
+            popupBtnTextColor: "#ffffff"
+        };
+
+        const DRIVE_ID = appConfig.driveId;
         const PREVIEW_URL = `https://drive.google.com/file/d/${DRIVE_ID}/preview`;
+        // ------------------------------------------
 
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
@@ -534,7 +698,97 @@
             }, 400);
         }
 
-        init();
+        // --- ส่วนที่เพิ่มใหม่: ระบบจัดการ Popup และ Admin ---
+        
+        // เมื่อกดปุ่ม "ดูจบแล้ว (เสร็จสิ้น)"
+        document.getElementById('finish-video-btn').onclick = () => {
+            // ปิดวิดีโอ
+            iframeTarget.innerHTML = '';
+            videoContainer.classList.remove('active');
+
+            // เตรียมข้อมูลและสไตล์ให้ Popup
+            const pBox = document.getElementById('popup-box');
+            const pImg = document.getElementById('popup-display-img');
+            const pText = document.getElementById('popup-display-text');
+            const pBtn = document.getElementById('popup-display-btn');
+
+            pBox.style.backgroundColor = appConfig.popupBg;
+            pBox.style.fontFamily = appConfig.popupFont;
+            pText.style.color = appConfig.popupTextColor;
+            pText.innerText = appConfig.popupText;
+
+            if (appConfig.popupImg && appConfig.popupImg.trim() !== "") {
+                pImg.src = appConfig.popupImg;
+                pImg.style.display = 'block';
+            } else {
+                pImg.style.display = 'none';
+            }
+
+            pBtn.innerText = appConfig.popupBtnText;
+            pBtn.href = appConfig.popupBtnLink;
+            pBtn.style.backgroundColor = appConfig.popupBtnBg;
+            pBtn.style.color = appConfig.popupBtnTextColor;
+            
+            // ป้องกันการรีโหลดถ้าลิงก์เป็น #
+            if(appConfig.popupBtnLink === "#") {
+                pBtn.onclick = (e) => { e.preventDefault(); location.reload(); };
+            }
+
+            // แสดง Popup
+            document.getElementById('popup-container').style.display = 'flex';
+        };
+
+        // ปิด Popup ถ้าต้องการกลับไปหน้าสแกน
+        document.getElementById('popup-close-btn').onclick = () => {
+            location.reload(); // รีโหลดเพื่อกลับไปหน้าแรกสุด
+        };
+
+        // ตรวจสอบ URL ว่าเข้าสู่โหมด Admin หรือไม่
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('A') || window.location.hash.includes('A')) {
+            // โหมด Admin
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+
+            // เติมข้อมูลเก่าลงในช่องกรอก
+            document.getElementById('cfg-drive-id').value = appConfig.driveId;
+            document.getElementById('cfg-popup-img').value = appConfig.popupImg;
+            document.getElementById('cfg-popup-text').value = appConfig.popupText;
+            document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
+            document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink;
+            document.getElementById('cfg-popup-font').value = appConfig.popupFont;
+            document.getElementById('cfg-popup-bg').value = appConfig.popupBg;
+            document.getElementById('cfg-popup-text-color').value = appConfig.popupTextColor;
+            document.getElementById('cfg-popup-btn-bg').value = appConfig.popupBtnBg;
+            document.getElementById('cfg-popup-btn-text-color').value = appConfig.popupBtnTextColor;
+
+            // บันทึกการตั้งค่า
+            document.getElementById('btn-save-admin').onclick = () => {
+                appConfig.driveId = document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID;
+                appConfig.popupImg = document.getElementById('cfg-popup-img').value.trim();
+                appConfig.popupText = document.getElementById('cfg-popup-text').value;
+                appConfig.popupBtnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
+                appConfig.popupBtnLink = document.getElementById('cfg-popup-btn-link').value || "#";
+                appConfig.popupFont = document.getElementById('cfg-popup-font').value || "Kanit";
+                appConfig.popupBg = document.getElementById('cfg-popup-bg').value || "#ffffff";
+                appConfig.popupTextColor = document.getElementById('cfg-popup-text-color').value || "#000000";
+                appConfig.popupBtnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
+                appConfig.popupBtnTextColor = document.getElementById('cfg-popup-btn-text-color').value || "#ffffff";
+
+                localStorage.setItem('memory65_config', JSON.stringify(appConfig));
+                alert('บันทึกการตั้งค่าสำเร็จ! ระบบจะทำการรีโหลดหน้าเว็บ');
+                window.location.href = window.location.pathname; // โหลดหน้าใหม่โดยเอา ?A ออก
+            };
+
+            // ปิดโหมดแอดมิน
+            document.getElementById('btn-close-admin').onclick = () => {
+                window.location.href = window.location.pathname; 
+            };
+        } else {
+            // โหมดผู้ใช้งานปกติ
+            init();
+        }
+
     </script>
 </body>
 </html>
