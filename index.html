@@ -248,6 +248,7 @@
         }
 
         #video-container.active { display: block !important; }
+        #video-container iframe { width: 100%; height: 100%; border: 0; }
 
         /* Centered Status Message */
         .status-msg {
@@ -517,8 +518,8 @@
     </div>
 
     <div id="video-container">
-        <!-- ใช้ HTML5 Video แทน iframe เพื่อให้จับเวลาได้ตรงเป๊ะ และไม่มีปุ่มเพลย์ซ้อนกัน 2 รอบ -->
-        <video id="memory-video" playsinline controls preload="metadata" style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
+        <!-- กลับมาใช้ iframe ของ Google Drive ป้องกันปัญหาวิดีโอพังบนมือถือและลดการโหลดซ้ำ -->
+        <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
     <!-- Admin Panel -->
@@ -534,11 +535,18 @@
                     <label>Google Drive Video ID</label>
                     <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
                 </div>
-                <!-- ถอดช่องความยาวคลิปออก เพราะระบบสามารถจับความยาวคลิปได้เองอัตโนมัติแล้ว -->
-                <div class="admin-group">
-                    <label>เด้งป๊อปอัพก่อนวิดีโอจบ (วินาที)</label>
-                    <input type="number" id="cfg-popup-before" placeholder="เช่น 3">
-                    <span class="helper-text">*ระบบจะจับเวลาจากวิดีโอที่กำลังเล่นอยู่จริงอัตโนมัติ ไม่ต้องกรอกความยาวคลิปแล้ว</span>
+                <!-- นำช่องความยาวคลิปกลับมา เพื่อใช้ในการคำนวณเวลาร่วมกับการจับการสัมผัสจอ -->
+                <div class="admin-group-row">
+                    <div class="admin-group">
+                        <label>ความยาวคลิป (วินาที)</label>
+                        <input type="number" id="cfg-video-duration" placeholder="เช่น 60">
+                        <span class="helper-text">*ต้องใส่เพื่อให้ระบบรู้เวลาของคลิป</span>
+                    </div>
+                    <div class="admin-group">
+                        <label>เด้งก่อนจบ (วินาที)</label>
+                        <input type="number" id="cfg-popup-before" placeholder="เช่น 3">
+                        <span class="helper-text">*เช่น 3 (เด้งก่อนจบ 3 วิ)</span>
+                    </div>
                 </div>
 
                 <div class="admin-section-title">💬 เนื้อหาป๊อปอัพหลังดูจบ</div>
@@ -665,7 +673,8 @@
         const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
         let appConfig = {
             driveId: DEFAULT_DRIVE_ID,
-            popupBefore: 3, // ตั้งค่าเริ่มต้นเป็น 3 วิ
+            videoDuration: 60, // ดึงค่านี้กลับมาใช้
+            popupBefore: 3,
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
             popupBtnText: "กลับไปหน้าแรก",
@@ -891,8 +900,31 @@
         }
 
         // ==========================================
-        // 4. การจัดการวิดีโอแบบ Native Video
+        // 4. การจัดการวิดีโอ (Iframe) และระบบจับเวลาแบบเจาะจง
         // ==========================================
+        let videoTimerStarted = false;
+
+        // ฟังก์ชันสำหรับเริ่มจับเวลา (จะถูกเรียกเมื่อผู้ใช้แตะโดน iframe หรือจอ)
+        function startVideoTimerCounting() {
+            if (videoTimerStarted) return; // ทำงานแค่ครั้งเดียว
+            videoTimerStarted = true;
+            
+            const totalDuration = parseInt(appConfig.videoDuration) || 0;
+            const beforeEnd = parseInt(appConfig.popupBefore) || 0;
+            
+            if (totalDuration > 0) {
+                let delaySeconds = totalDuration - beforeEnd;
+                if (delaySeconds < 0) delaySeconds = 0;
+                
+                setTimeout(() => {
+                    // ถ้าวิดีโอยังเปิดอยู่ ให้เด้งป๊อปอัพขึ้นมา
+                    if (videoContainer.classList.contains('active')) {
+                        openPopupOverlay();
+                    }
+                }, delaySeconds * 1000);
+            }
+        }
+
         function triggerSuccess() {
             isDetected = true;
             const flash = document.getElementById('success-flash');
@@ -911,47 +943,34 @@
                 videoContainer.classList.add('active');
                 
                 const currentDriveId = appConfig.driveId || DEFAULT_DRIVE_ID;
-                const videoEl = document.getElementById('memory-video');
+                const iframeTarget = document.getElementById('iframe-target');
                 
-                // แปลงเป็นลิงก์สตรีมมิ่งเพื่อเล่นด้วยแท็ก Video 
-                videoEl.src = `https://drive.google.com/uc?export=download&id=${currentDriveId}`;
-                
-                // พยายามสั่งเล่นอัตโนมัติ (แต่ถ้าถูกกั้น ผู้ใช้ก็จะเห็นปุ่มเพลย์แค่ 1 ปุ่มแบบวิดีโอปกติ)
-                videoEl.play().catch(e => console.log("ต้องกด Play ด้วยตัวเองตามนโยบายเบราว์เซอร์"));
+                // ใช้ Iframe ตามเดิมเพื่อความเสถียรบนมือถือ
+                iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen style="width: 100%; height: 100%; border: none;"></iframe>`;
 
-                let popupTriggered = false;
-
-                // ตรวจสอบเวลาที่เล่นจริงๆ (Real-time tracking)
-                videoEl.ontimeupdate = () => {
-                    const beforeEnd = parseInt(appConfig.popupBefore) || 0;
-                    
-                    // หากรู้เวลาวิดีโอทั้งหมดแล้ว และป๊อปอัพยังไม่เคยเด้ง
-                    if (videoEl.duration > 0 && !popupTriggered) {
-                        const targetTime = videoEl.duration - beforeEnd;
-                        // เมื่อเวลาเล่นจริง มาถึงเวลาที่คำนวณไว้
-                        if (videoEl.currentTime >= targetTime) {
-                            popupTriggered = true;
-                            openPopupOverlay();
+                // ระบบดักจับการคลิก (เมื่อผู้ใช้แตะปุ่ม Play ของ Google Drive ใน Iframe)
+                // ทันทีที่ผู้ใช้แตะ Iframe หน้าต่างเว็บหลักจะเสียโฟกัส (blur) เราจึงรู้ได้ทันทีว่าเขากด Play แล้ว!
+                window.focus();
+                window.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        const activeEl = document.activeElement;
+                        // ถ้าสิ่งที่ผู้ใช้เพิ่งแตะไปคือ Iframe ของเรา -> เริ่มนับเวลาถอยหลัง!
+                        if (activeEl && activeEl.tagName === 'IFRAME') {
+                            startVideoTimerCounting();
                         }
-                    }
-                };
+                    }, 100);
+                });
 
-                // กรณีดูจนจบจริงๆ (เผื่อเวลาคลาดเคลื่อน)
-                videoEl.onended = () => {
-                    if (!popupTriggered) {
-                        popupTriggered = true;
-                        openPopupOverlay();
-                    }
-                };
+                // สำรองสำหรับมือถือบางรุ่น: ทันทีที่นิ้วแตะโดนหน้าจอส่วนใดก็ตามในหน้านี้ (เผื่อระบบ blur ด้านบนไม่ทำงาน)
+                videoContainer.addEventListener('touchstart', startVideoTimerCounting, { once: true });
                 
             }, 400);
         }
 
         function openPopupOverlay() {
-            const videoEl = document.getElementById('memory-video');
-            if (videoEl) {
-                videoEl.pause(); // หยุดคลิปเมื่อป๊อปอัพขึ้น
-            }
+            const iframeTarget = document.getElementById('iframe-target');
+            if (iframeTarget) iframeTarget.innerHTML = ''; // ปิดวิดีโอ
+            
             videoContainer.classList.remove('active');
 
             const pBox = document.getElementById('popup-box');
@@ -992,6 +1011,7 @@
         // ==========================================
         function populateAdminForm() {
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
+            document.getElementById('cfg-video-duration').value = appConfig.videoDuration !== undefined ? appConfig.videoDuration : 60;
             document.getElementById('cfg-popup-before').value = appConfig.popupBefore !== undefined ? appConfig.popupBefore : 3;
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
@@ -1083,6 +1103,7 @@
 
                 const newConfig = {
                     driveId: document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID,
+                    videoDuration: parseInt(document.getElementById('cfg-video-duration').value) || 0,
                     popupBefore: parseInt(document.getElementById('cfg-popup-before').value) || 0,
                     popupImg: document.getElementById('cfg-popup-img').value.trim(),
                     popupText: document.getElementById('cfg-popup-text').value,
