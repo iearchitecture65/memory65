@@ -248,7 +248,6 @@
         }
 
         #video-container.active { display: block !important; }
-        #video-container iframe { width: 100%; height: 100%; border: 0; }
 
         /* Centered Status Message */
         .status-msg {
@@ -518,8 +517,8 @@
     </div>
 
     <div id="video-container">
-        <!-- ปุ่มปิดวิดีโอแบบแมนวลถูกนำออกไปแล้วตามที่ร้องขอ ระบบจะใช้การจับเวลาแทน -->
-        <div id="iframe-target" style="width: 100%; height: 100%;"></div>
+        <!-- ใช้ HTML5 Video แทน iframe เพื่อให้จับเวลาได้ตรงเป๊ะ และไม่มีปุ่มเพลย์ซ้อนกัน 2 รอบ -->
+        <video id="memory-video" playsinline controls preload="metadata" style="width: 100%; height: 100%; object-fit: contain; background: #000;"></video>
     </div>
 
     <!-- Admin Panel -->
@@ -535,17 +534,11 @@
                     <label>Google Drive Video ID</label>
                     <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
                 </div>
-                <div class="admin-group-row">
-                    <div class="admin-group">
-                        <label>ความยาวคลิป (วินาที)</label>
-                        <input type="number" id="cfg-video-duration" placeholder="เช่น 60">
-                        <span class="helper-text">*ต้องใส่เพื่อให้ป๊อปอัพเด้งอัตโนมัติ</span>
-                    </div>
-                    <div class="admin-group">
-                        <label>เด้งก่อนจบ (วินาที)</label>
-                        <input type="number" id="cfg-popup-before" placeholder="เช่น 10">
-                        <span class="helper-text">*เช่น 10 (เด้งก่อนจบ 10 วิ)</span>
-                    </div>
+                <!-- ถอดช่องความยาวคลิปออก เพราะระบบสามารถจับความยาวคลิปได้เองอัตโนมัติแล้ว -->
+                <div class="admin-group">
+                    <label>เด้งป๊อปอัพก่อนวิดีโอจบ (วินาที)</label>
+                    <input type="number" id="cfg-popup-before" placeholder="เช่น 3">
+                    <span class="helper-text">*ระบบจะจับเวลาจากวิดีโอที่กำลังเล่นอยู่จริงอัตโนมัติ ไม่ต้องกรอกความยาวคลิปแล้ว</span>
                 </div>
 
                 <div class="admin-section-title">💬 เนื้อหาป๊อปอัพหลังดูจบ</div>
@@ -650,7 +643,7 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // ==========================================
-        // 1. Firebase Setup (จาก Config ของคุณ)
+        // 1. Firebase Setup
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDW8xe8Cf2ytX4HwTrM13dfoJPG3NZrVMo",
@@ -667,15 +660,12 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         
-        // ข้อมูลจะถูกเก็บไว้ที่ Collection "app_settings" Document "memory65_config"
         const configDoc = doc(db, "app_settings", "memory65_config");
 
-        // ค่า Default เริ่มต้น
         const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
         let appConfig = {
             driveId: DEFAULT_DRIVE_ID,
-            videoDuration: 60,
-            popupBefore: 10,
+            popupBefore: 3, // ตั้งค่าเริ่มต้นเป็น 3 วิ
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
             popupBtnText: "กลับไปหน้าแรก",
@@ -687,7 +677,6 @@
             popupBtnTextColor: "#ffffff"
         };
 
-        // ตรวจสอบสถานะโหลดของระบบ
         let isFirebaseLoaded = false;
         let isModelLoaded = false;
         const urlParams = new URLSearchParams(window.location.search);
@@ -708,10 +697,8 @@
         signInAnonymously(auth).then(() => {
             onSnapshot(configDoc, (snapshot) => {
                 if (snapshot.exists()) {
-                    // ถ้ามีข้อมูลในฐานข้อมูลอยู่แล้ว ให้เอามาใช้งาน
                     appConfig = { ...appConfig, ...snapshot.data() };
                 } else {
-                    // ถ้ายังไม่มี (ใช้งานครั้งแรก) ให้สร้างขึ้นมา
                     setDoc(configDoc, appConfig).catch(console.error);
                 }
                 
@@ -725,7 +712,6 @@
                 }
             }, (error) => {
                 console.error("Firebase Snapshot Error:", error);
-                // ถ้ามี error ก็ให้ใช้ค่า default ต่อไป
                 isFirebaseLoaded = true;
                 checkReadyStatus();
             });
@@ -737,7 +723,7 @@
 
 
         // ==========================================
-        // 3. ระบบ AI สแกนภาพ (คงเดิม 100%)
+        // 3. ระบบ AI สแกนภาพ
         // ==========================================
         const targetImg = document.getElementById('target-img');
         const startBtn = document.getElementById('start-btn');
@@ -747,7 +733,6 @@
         const cameraContainer = document.getElementById('camera-container');
         const webcam = document.getElementById('webcam');
         const videoContainer = document.getElementById('video-container');
-        const iframeTarget = document.getElementById('iframe-target');
         const lockIndicator = document.getElementById('lock-indicator');
         const subStatusText = document.getElementById('sub-status-text');
         const subStatusContainer = document.getElementById('sub-status-container');
@@ -906,7 +891,7 @@
         }
 
         // ==========================================
-        // 4. การจัดการวิดีโอและระบบเด้งป๊อปอัพอัตโนมัติ
+        // 4. การจัดการวิดีโอแบบ Native Video
         // ==========================================
         function triggerSuccess() {
             isDetected = true;
@@ -925,30 +910,48 @@
                 flash.style.opacity = '0';
                 videoContainer.classList.add('active');
                 
-                // โหลดวิดีโอจาก Drive โดยใช้ค่าที่เซฟใน Firebase
                 const currentDriveId = appConfig.driveId || DEFAULT_DRIVE_ID;
-                iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+                const videoEl = document.getElementById('memory-video');
                 
-                // ระบบตั้งเวลา Popup อัตโนมัติเท่านั้น (ปุ่มแมนวลถูกตัดออก)
-                const totalDuration = parseInt(appConfig.videoDuration) || 0;
-                const beforeEnd = parseInt(appConfig.popupBefore) || 0;
+                // แปลงเป็นลิงก์สตรีมมิ่งเพื่อเล่นด้วยแท็ก Video 
+                videoEl.src = `https://drive.google.com/uc?export=download&id=${currentDriveId}`;
                 
-                if (totalDuration > 0) {
-                    let delaySeconds = totalDuration - beforeEnd;
-                    if (delaySeconds < 0) delaySeconds = 0;
+                // พยายามสั่งเล่นอัตโนมัติ (แต่ถ้าถูกกั้น ผู้ใช้ก็จะเห็นปุ่มเพลย์แค่ 1 ปุ่มแบบวิดีโอปกติ)
+                videoEl.play().catch(e => console.log("ต้องกด Play ด้วยตัวเองตามนโยบายเบราว์เซอร์"));
+
+                let popupTriggered = false;
+
+                // ตรวจสอบเวลาที่เล่นจริงๆ (Real-time tracking)
+                videoEl.ontimeupdate = () => {
+                    const beforeEnd = parseInt(appConfig.popupBefore) || 0;
                     
-                    setTimeout(() => {
-                        if (videoContainer.classList.contains('active')) {
+                    // หากรู้เวลาวิดีโอทั้งหมดแล้ว และป๊อปอัพยังไม่เคยเด้ง
+                    if (videoEl.duration > 0 && !popupTriggered) {
+                        const targetTime = videoEl.duration - beforeEnd;
+                        // เมื่อเวลาเล่นจริง มาถึงเวลาที่คำนวณไว้
+                        if (videoEl.currentTime >= targetTime) {
+                            popupTriggered = true;
                             openPopupOverlay();
                         }
-                    }, delaySeconds * 1000);
-                }
+                    }
+                };
+
+                // กรณีดูจนจบจริงๆ (เผื่อเวลาคลาดเคลื่อน)
+                videoEl.onended = () => {
+                    if (!popupTriggered) {
+                        popupTriggered = true;
+                        openPopupOverlay();
+                    }
+                };
                 
             }, 400);
         }
 
         function openPopupOverlay() {
-            iframeTarget.innerHTML = '';
+            const videoEl = document.getElementById('memory-video');
+            if (videoEl) {
+                videoEl.pause(); // หยุดคลิปเมื่อป๊อปอัพขึ้น
+            }
             videoContainer.classList.remove('active');
 
             const pBox = document.getElementById('popup-box');
@@ -989,8 +992,7 @@
         // ==========================================
         function populateAdminForm() {
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
-            document.getElementById('cfg-video-duration').value = appConfig.videoDuration || 0;
-            document.getElementById('cfg-popup-before').value = appConfig.popupBefore || 10;
+            document.getElementById('cfg-popup-before').value = appConfig.popupBefore !== undefined ? appConfig.popupBefore : 3;
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
             document.getElementById('cfg-popup-font').value = appConfig.popupFont;
@@ -1059,7 +1061,6 @@
             document.getElementById(pickerId).value = hex;   
         }
 
-        // เช็คว่าเป็นโหมดแอดมินหรือผู้ใช้งาน
         if (isAdminMode) {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
@@ -1075,7 +1076,6 @@
                 input.addEventListener('change', updateAdminLivePreview);
             });
 
-            // บันทึกข้อมูลไปยัง Firebase
             document.getElementById('btn-save-admin').onclick = async () => {
                 const btn = document.getElementById('btn-save-admin');
                 btn.innerText = "กำลังบันทึก...";
@@ -1083,7 +1083,6 @@
 
                 const newConfig = {
                     driveId: document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID,
-                    videoDuration: parseInt(document.getElementById('cfg-video-duration').value) || 0,
                     popupBefore: parseInt(document.getElementById('cfg-popup-before').value) || 0,
                     popupImg: document.getElementById('cfg-popup-img').value.trim(),
                     popupText: document.getElementById('cfg-popup-text').value,
@@ -1112,7 +1111,6 @@
                 window.location.href = window.location.pathname; 
             };
         } else {
-            // โหมดผู้ใช้งาน เริ่มโหลด AI
             initAI();
         }
 
