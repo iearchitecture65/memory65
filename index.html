@@ -9,7 +9,7 @@
     <link rel="shortcut icon" href="memory-picture.JPG" type="image/x-icon">
     <link rel="icon" href="memory-picture.JPG" type="image/x-icon">
     
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600&family=Prompt:wght@300;400;500&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     
@@ -65,7 +65,6 @@
             position: relative;
             width: 100%;
             max-width: 280px;
-            /* ปรับกลับเป็น 16:9 ตามสัดส่วนคลิปของคุณเพื่อป้องกันการบีบด้านข้าง */
             aspect-ratio: 16 / 9;
             margin-bottom: 70px; 
             border-radius: 12px;
@@ -112,25 +111,18 @@
             75% { content: '...'; }
         }
 
-        /* --- Animation Timing (2.7s total) --- */
-        /* Phase 1: 0-1.5s (Scan) | Phase 2: 1.5-1.7s (Pause) | Phase 3: 1.7-2.1s (Flash) | Phase 4: 2.1-2.2s (Pause) | Phase 5: 2.2-2.7s (Zoom) */
         @keyframes complexTransition {
             0% { filter: brightness(1); transform: scale(1); opacity: 1; }
-            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; } /* 1.5s mark */
-            63% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 1.7s mark (Pause 0.2s) */
-            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; } /* 1.9s mark (Flash Peak) */
-            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.1s mark (Flash End) */
-            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }   /* 2.2s mark (Pause 0.1s) */
-            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; } /* 2.7s mark (Zoom/Fade) */
+            55.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            63% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            70.4% { filter: brightness(3); transform: scale(1.02); opacity: 1; }
+            77.8% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            81.5% { filter: brightness(1); transform: scale(1); opacity: 1; }
+            100% { filter: brightness(1.1); transform: scale(1.15); opacity: 0; }
         }
 
-        .start-animating .preview-box {
-            animation: complexTransition 2.7s ease-in-out forwards;
-        }
-
-        .start-animating .grayscale-overlay {
-            animation: revealBW 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
+        .start-animating .preview-box { animation: complexTransition 2.7s ease-in-out forwards; }
+        .start-animating .grayscale-overlay { animation: revealBW 1.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 
         @keyframes revealBW {
             from { clip-path: inset(0 0 100% 0); }
@@ -176,7 +168,6 @@
             transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex; align-items: center; justify-content: center;
         }
-        
         .btn-start:disabled { background: #f0f0f0; color: #ccc; box-shadow: none; cursor: not-allowed; }
 
         /* Camera Scanner Section */
@@ -291,11 +282,6 @@
         }
         .scan-active { background: #000 !important; }
 
-
-        /* ---------------------------------------------------
-           ส่วนที่เพิ่มใหม่: CSS สำหรับ Admin Panel, Popup และปุ่มปิดวิดีโอ 
-           --------------------------------------------------- */
-        
         /* ปุ่มปิดวิดีโอ (เพื่อเปิด Popup) */
         #finish-video-btn {
             position: absolute;
@@ -315,31 +301,90 @@
         }
         #finish-video-btn:hover { background: rgba(0,0,0,0.8); border-color: #fff; }
 
-        /* Admin Panel */
+        /* =========================================
+           Admin Panel Redesign 
+           ========================================= */
         #admin-panel {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f4f4f9; z-index: 9999; overflow-y: auto;
-            padding: 30px 20px; font-family: 'Kanit', sans-serif;
+            background: #f0f2f5; z-index: 9999; overflow-y: auto;
+            padding: 40px 20px; font-family: 'Kanit', sans-serif;
             display: none; color: #333;
         }
-        .admin-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 25px; text-align: center; color: #000; }
-        .admin-group { margin-bottom: 18px; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .admin-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
-        .admin-group input, .admin-group textarea { 
-            width: 100%; padding: 12px; border: 1px solid #ddd; 
-            border-radius: 8px; font-family: inherit; font-size: 1rem;
-            outline: none; transition: border 0.3s;
+        .admin-container {
+            max-width: 600px; margin: 0 auto;
+            background: #fff; padding: 35px 30px; border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
         }
-        .admin-group input:focus, .admin-group textarea:focus { border-color: #000; }
+        .admin-title { 
+            font-size: 1.8rem; font-weight: 600; margin-bottom: 30px; 
+            text-align: center; color: #1a1a1a; 
+        }
+        .admin-section-title {
+            font-size: 1.15rem; font-weight: 500; color: #000; margin: 30px 0 15px;
+            padding-bottom: 8px; border-bottom: 2px solid #f0f0f0;
+        }
+        .admin-group { margin-bottom: 20px; }
+        .admin-group-row { display: flex; gap: 15px; }
+        .admin-group-row > div { flex: 1; }
+
+        .admin-group label { 
+            display: block; font-weight: 500; margin-bottom: 8px; 
+            font-size: 0.95rem; color: #555; 
+        }
+        .admin-group input[type="text"], 
+        .admin-group input[type="number"], 
+        .admin-group textarea, 
+        .admin-group select { 
+            width: 100%; padding: 12px 15px; border: 1.5px solid #e0e0e0; 
+            border-radius: 10px; font-family: inherit; font-size: 1rem;
+            outline: none; transition: border-color 0.3s, box-shadow 0.3s;
+            background-color: #fafafa;
+        }
+        .admin-group input:focus, 
+        .admin-group textarea:focus, 
+        .admin-group select:focus { 
+            border-color: #000; background-color: #fff; 
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+        }
+        
+        /* Color Picker Styling */
+        .color-picker-group {
+            display: flex; align-items: center; gap: 15px;
+        }
+        .color-picker-group input[type="color"] {
+            -webkit-appearance: none; border: none; width: 48px; height: 48px;
+            border-radius: 10px; cursor: pointer; padding: 0; background: none;
+        }
+        .color-picker-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .color-picker-group input[type="color"]::-webkit-color-swatch { 
+            border: 2px solid #e0e0e0; border-radius: 10px; 
+        }
+        .color-picker-group .color-hex { flex: 1; }
+
+        .admin-actions { 
+            display: flex; gap: 15px; margin-top: 40px; 
+        }
         .admin-btn { 
             background: #000; color: #fff; padding: 14px; 
-            width: 100%; max-width: 500px; border: none; 
-            border-radius: 8px; font-size: 1rem; cursor: pointer; 
-            margin: 10px auto; display: block; font-family: 'Kanit'; transition: 0.3s;
+            flex: 1; border: none; border-radius: 12px; font-size: 1.05rem; 
+            font-weight: 500; cursor: pointer; font-family: 'Kanit'; 
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
-        .admin-btn:hover { background: #333; }
-        .admin-btn-close { background: #dc3545; }
-        .admin-btn-close:hover { background: #c82333; }
+        .admin-btn:hover { 
+            background: #333; transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15); 
+        }
+        .admin-btn-close { 
+            background: #fff; color: #e53935; border: 2px solid #ffebee; 
+            box-shadow: none;
+        }
+        .admin-btn-close:hover { 
+            background: #ffebee; border-color: #e53935; color: #c62828; 
+            box-shadow: none; transform: translateY(0);
+        }
+        .helper-text { font-size: 0.8rem; color: #888; margin-top: 4px; display: block; }
+
+        /* ========================================= */
 
         /* Popup Container */
         #popup-container {
@@ -366,7 +411,7 @@
         .popup-box p { font-size: 1.1rem; margin-bottom: 25px; white-space: pre-wrap; line-height: 1.5; margin-top:0; }
         .popup-box a.popup-btn { 
             display: inline-block; padding: 14px 35px; border-radius: 100px; 
-            text-decoration: none; font-weight: 600; font-size: 1rem; 
+            text-decoration: none; font-weight: 500; font-size: 1rem; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: transform 0.2s;
         }
         .popup-box a.popup-btn:active { transform: scale(0.95); }
@@ -375,7 +420,9 @@
             width: 30px; height: 30px; background: #eee; border-radius: 50%;
             display: flex; justify-content: center; align-items: center;
             cursor: pointer; font-weight: bold; color: #555;
+            transition: background 0.2s;
         }
+        .popup-close-x:hover { background: #ddd; }
 
     </style>
 </head>
@@ -425,62 +472,98 @@
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
-    <!-- ส่วนที่เพิ่มใหม่: Admin Panel -->
+    <!-- Admin Panel (โฉมใหม่ ใช้ง่ายขึ้น) -->
     <div id="admin-panel">
-        <div class="admin-title">⚙️ ระบบตั้งค่า (Admin)</div>
-        <div class="admin-group">
-            <label>Google Drive Video ID</label>
-            <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
+        <div class="admin-container">
+            <div class="admin-title">⚙️ ระบบตั้งค่า Admin</div>
+            
+            <div class="admin-section-title">🎥 ตั้งค่าวิดีโอ</div>
+            <div class="admin-group">
+                <label>Google Drive Video ID</label>
+                <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
+            </div>
+            <div class="admin-group-row">
+                <div class="admin-group">
+                    <label>ความยาวคลิป (วินาที)</label>
+                    <input type="number" id="cfg-video-duration" placeholder="เช่น 60">
+                    <span class="helper-text">*ใส่ 0 ถ้าไม่ต้องการตั้งเวลา</span>
+                </div>
+                <div class="admin-group">
+                    <label>เด้งก่อนจบ (วินาที)</label>
+                    <input type="number" id="cfg-popup-before" placeholder="เช่น 10">
+                    <span class="helper-text">*เช่น 10 (เด้งก่อนจบ 10 วิ)</span>
+                </div>
+            </div>
+
+            <div class="admin-section-title">💬 เนื้อหาป๊อปอัพหลังดูจบ</div>
+            <div class="admin-group">
+                <label>ลิงก์รูปภาพ (ออพชั่นเสริม)</label>
+                <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg (เว้นว่างได้)">
+            </div>
+            <div class="admin-group">
+                <label>ข้อความอธิบาย</label>
+                <textarea id="cfg-popup-text" rows="3" placeholder="พิมพ์ข้อความที่จะแสดงเมื่อดูวิดีโอจบ..."></textarea>
+            </div>
+            <div class="admin-group">
+                <label>รูปแบบตัวอักษร (Font)</label>
+                <select id="cfg-popup-font">
+                    <option value="Kanit">Kanit (แนะนำ)</option>
+                    <option value="Prompt">Prompt</option>
+                    <option value="Sarabun">Sarabun</option>
+                    <option value="Tahoma">Tahoma</option>
+                    <option value="Arial">Arial</option>
+                    <option value="sans-serif">System Default (ตามระบบ)</option>
+                </select>
+            </div>
+            <div class="admin-group-row">
+                <div class="admin-group">
+                    <label>ข้อความบนปุ่ม</label>
+                    <input type="text" id="cfg-popup-btn-text" placeholder="ดูรูปเพิ่มเติม">
+                </div>
+                <div class="admin-group">
+                    <label>ลิงก์เมื่อกดปุ่ม</label>
+                    <input type="text" id="cfg-popup-btn-link" placeholder="https://google.com">
+                </div>
+            </div>
+
+            <div class="admin-section-title">🎨 ตั้งค่าสีสัน (กดเลือกสีได้เลย)</div>
+            <div class="admin-group color-picker-group">
+                <input type="color" id="cfg-popup-bg-color" value="#ffffff">
+                <div class="color-hex">
+                    <label>สีพื้นหลังป๊อปอัพ</label>
+                    <input type="text" id="cfg-popup-bg" placeholder="#ffffff">
+                </div>
+            </div>
+            <div class="admin-group color-picker-group">
+                <input type="color" id="cfg-popup-text-color-picker" value="#000000">
+                <div class="color-hex">
+                    <label>สีตัวอักษรข้อความ</label>
+                    <input type="text" id="cfg-popup-text-color" placeholder="#000000">
+                </div>
+            </div>
+            <div class="admin-group color-picker-group">
+                <input type="color" id="cfg-popup-btn-bg-picker" value="#000000">
+                <div class="color-hex">
+                    <label>สีพื้นหลังปุ่ม</label>
+                    <input type="text" id="cfg-popup-btn-bg" placeholder="#000000">
+                </div>
+            </div>
+            <div class="admin-group color-picker-group">
+                <input type="color" id="cfg-popup-btn-text-color-picker" value="#ffffff">
+                <div class="color-hex">
+                    <label>สีตัวอักษรบนปุ่ม</label>
+                    <input type="text" id="cfg-popup-btn-text-color" placeholder="#ffffff">
+                </div>
+            </div>
+
+            <div class="admin-actions">
+                <button class="admin-btn admin-btn-close" id="btn-close-admin">ยกเลิก / ปิด</button>
+                <button class="admin-btn" id="btn-save-admin">💾 บันทึกการตั้งค่า</button>
+            </div>
         </div>
-        <div class="admin-group">
-            <label>ความยาววิดีโอทั้งหมด (วินาที) <br><small style="color:#d32f2f; font-weight:normal;">*ต้องใส่เพื่อให้ระบบตั้งเวลาเด้งอัตโนมัติ (ใส่ 0 ถ้าไม่ต้องการตั้งเวลา)</small></label>
-            <input type="number" id="cfg-video-duration" placeholder="เช่น 60 (สำหรับคลิป 1 นาที)">
-        </div>
-        <div class="admin-group">
-            <label>ให้ป๊อปอัพเด้งก่อนวิดีโอจบกี่วินาที</label>
-            <input type="number" id="cfg-popup-before" placeholder="เช่น 10 (เด้งก่อนจบ 10 วิ)">
-        </div>
-        <div class="admin-group">
-            <label>ลิงก์รูปภาพในป๊อปอัพ (เว้นว่างได้ถ้าไม่ต้องการใส่)</label>
-            <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg">
-        </div>
-        <div class="admin-group">
-            <label>ข้อความในป๊อปอัพ</label>
-            <textarea id="cfg-popup-text" rows="3" placeholder="ข้อความที่จะแสดงเมื่อดูวิดีโอจบ"></textarea>
-        </div>
-        <div class="admin-group">
-            <label>ข้อความบนปุ่ม</label>
-            <input type="text" id="cfg-popup-btn-text" placeholder="ดูรูปเพิ่มเติม">
-        </div>
-        <div class="admin-group">
-            <label>ลิงก์ของปุ่ม (เมื่อกดปุ่มจะไปที่ไหน)</label>
-            <input type="text" id="cfg-popup-btn-link" placeholder="https://google.com">
-        </div>
-        <div class="admin-group">
-            <label>ชื่อฟอนต์ (เช่น Kanit, Tahoma, Arial)</label>
-            <input type="text" id="cfg-popup-font" placeholder="Kanit">
-        </div>
-        <div class="admin-group">
-            <label>สีพื้นหลังป๊อปอัพ (เช่น #ffffff หรือ white)</label>
-            <input type="text" id="cfg-popup-bg" placeholder="#ffffff">
-        </div>
-        <div class="admin-group">
-            <label>สีตัวอักษรป๊อปอัพ</label>
-            <input type="text" id="cfg-popup-text-color" placeholder="#000000">
-        </div>
-        <div class="admin-group">
-            <label>สีพื้นหลังปุ่ม</label>
-            <input type="text" id="cfg-popup-btn-bg" placeholder="#000000">
-        </div>
-        <div class="admin-group">
-            <label>สีข้อความบนปุ่ม</label>
-            <input type="text" id="cfg-popup-btn-text-color" placeholder="#ffffff">
-        </div>
-        <button class="admin-btn" id="btn-save-admin">บันทึกการตั้งค่า</button>
-        <button class="admin-btn admin-btn-close" id="btn-close-admin">ปิดหน้าตั้งค่า (กลับไปสแกนรูป)</button>
     </div>
 
-    <!-- ส่วนที่เพิ่มใหม่: Popup Container -->
+    <!-- Popup Container -->
     <div id="popup-container">
         <div class="popup-overlay" id="popup-overlay-bg"></div>
         <div class="popup-box" id="popup-box">
@@ -553,7 +636,7 @@
 
         async function init() {
             try {
-                // Ensure image is ready (Fix texture size error)
+                // Ensure image is ready
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
                     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -641,7 +724,6 @@
         }
 
         async function predict() {
-            // Safety check for texture size error
             if (!isDetected && isReadyToAnalyze && webcam.readyState === 4 && webcam.videoWidth > 0) {
                 const check = tf.tidy(() => {
                     const full = tf.browser.fromPixels(webcam);
@@ -712,29 +794,24 @@
                 
                 if (totalDuration > 0) {
                     let delaySeconds = totalDuration - beforeEnd;
-                    if (delaySeconds < 0) delaySeconds = 0; // ป้องกันค่าติดลบ
+                    if (delaySeconds < 0) delaySeconds = 0;
                     
                     setTimeout(() => {
-                        // เช็คว่าถ้าผู้ใช้ยังไม่ได้กดปุ่มปิดเอง ให้เด้ง popup
                         if (videoContainer.classList.contains('active')) {
                             openPopupOverlay();
                         }
-                    }, delaySeconds * 1000); // แปลงเป็นมิลลิวินาที
+                    }, delaySeconds * 1000);
                 }
                 // ------------------------------------
                 
             }, 400);
         }
 
-        // --- ส่วนที่เพิ่มใหม่: ระบบจัดการ Popup และ Admin ---
-        
-        // แยกฟังก์ชันเปิด Popup ออกมาเพื่อให้ใช้ร่วมกันได้
+        // --- ระบบจัดการ Popup และ Admin ---
         function openPopupOverlay() {
-            // ปิดวิดีโอ
             iframeTarget.innerHTML = '';
             videoContainer.classList.remove('active');
 
-            // เตรียมข้อมูลและสไตล์ให้ Popup
             const pBox = document.getElementById('popup-box');
             const pImg = document.getElementById('popup-display-img');
             const pText = document.getElementById('popup-display-text');
@@ -757,62 +834,87 @@
             pBtn.style.backgroundColor = appConfig.popupBtnBg;
             pBtn.style.color = appConfig.popupBtnTextColor;
             
-            // ป้องกันการรีโหลดถ้าลิงก์เป็น #
             if(appConfig.popupBtnLink === "#") {
                 pBtn.onclick = (e) => { e.preventDefault(); location.reload(); };
             }
 
-            // แสดง Popup
             document.getElementById('popup-container').style.display = 'flex';
         }
 
-        // เมื่อกดปุ่ม "ดูจบแล้ว (เสร็จสิ้น)" (กรณีอยากกดปิดเองก่อนเวลา)
         document.getElementById('finish-video-btn').onclick = openPopupOverlay;
 
-        // ปิด Popup ถ้าต้องการกลับไปหน้าสแกน
         document.getElementById('popup-close-btn').onclick = () => {
-            location.reload(); // รีโหลดเพื่อกลับไปหน้าแรกสุด
+            location.reload(); 
         };
+
+        // --- Color Picker Sync Logic ---
+        function syncColors(pickerId, textId) {
+            const picker = document.getElementById(pickerId);
+            const text = document.getElementById(textId);
+            
+            // เมื่อจิ้มเลือกสี อัปเดตช่องข้อความ
+            picker.addEventListener('input', () => { text.value = picker.value; });
+            
+            // เมื่อพิมพ์รหัสสี อัปเดตตัวเลือกสี
+            text.addEventListener('input', () => {
+                if (/^#[0-9A-F]{6}$/i.test(text.value)) {
+                    picker.value = text.value;
+                }
+            });
+        }
+        syncColors('cfg-popup-bg-color', 'cfg-popup-bg');
+        syncColors('cfg-popup-text-color-picker', 'cfg-popup-text-color');
+        syncColors('cfg-popup-btn-bg-picker', 'cfg-popup-btn-bg');
+        syncColors('cfg-popup-btn-text-color-picker', 'cfg-popup-btn-text-color');
+
+        // ฟังก์ชันช่วยเซ็ตค่าสีลงไปในช่อง
+        function setAdminColorValue(hexCode, textId, pickerId) {
+            const hex = /^#[0-9A-F]{6}$/i.test(hexCode) ? hexCode : '#000000';
+            document.getElementById(textId).value = hexCode; // ใส่รหัสเดิมให้ช่องกรอก (เผื่อเขาเขียนคำว่า white)
+            document.getElementById(pickerId).value = hex;   // ตัว color picker รับเฉพาะ Hex
+        }
 
         // ตรวจสอบ URL ว่าเข้าสู่โหมด Admin หรือไม่
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('A') || window.location.hash.includes('A')) {
-            // โหมด Admin
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
 
-            // เติมข้อมูลเก่าลงในช่องกรอก
+            // เติมข้อมูลลงช่องกรอก
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
             document.getElementById('cfg-video-duration').value = appConfig.videoDuration || 0;
             document.getElementById('cfg-popup-before').value = appConfig.popupBefore || 10;
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
+            document.getElementById('cfg-popup-font').value = appConfig.popupFont;
             document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
             document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink;
-            document.getElementById('cfg-popup-font').value = appConfig.popupFont;
-            document.getElementById('cfg-popup-bg').value = appConfig.popupBg;
-            document.getElementById('cfg-popup-text-color').value = appConfig.popupTextColor;
-            document.getElementById('cfg-popup-btn-bg').value = appConfig.popupBtnBg;
-            document.getElementById('cfg-popup-btn-text-color').value = appConfig.popupBtnTextColor;
 
-            // บันทึกการตั้งค่า
+            // เซ็ตข้อมูลสีให้ตรงทั้งช่องข้อความและตัวเลือกสี
+            setAdminColorValue(appConfig.popupBg, 'cfg-popup-bg', 'cfg-popup-bg-color');
+            setAdminColorValue(appConfig.popupTextColor, 'cfg-popup-text-color', 'cfg-popup-text-color-picker');
+            setAdminColorValue(appConfig.popupBtnBg, 'cfg-popup-btn-bg', 'cfg-popup-btn-bg-picker');
+            setAdminColorValue(appConfig.popupBtnTextColor, 'cfg-popup-btn-text-color', 'cfg-popup-btn-text-color-picker');
+
+            // บันทึก
             document.getElementById('btn-save-admin').onclick = () => {
                 appConfig.driveId = document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID;
                 appConfig.videoDuration = parseInt(document.getElementById('cfg-video-duration').value) || 0;
                 appConfig.popupBefore = parseInt(document.getElementById('cfg-popup-before').value) || 0;
                 appConfig.popupImg = document.getElementById('cfg-popup-img').value.trim();
                 appConfig.popupText = document.getElementById('cfg-popup-text').value;
-                appConfig.popupBtnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
-                appConfig.popupBtnLink = document.getElementById('cfg-popup-b๐tn-link').value || "#";
                 appConfig.popupFont = document.getElementById('cfg-popup-font').value || "Kanit";
+                appConfig.popupBtnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
+                appConfig.popupBtnLink = document.getElementById('cfg-popup-btn-link').value || "#";
+                
                 appConfig.popupBg = document.getElementById('cfg-popup-bg').value || "#ffffff";
                 appConfig.popupTextColor = document.getElementById('cfg-popup-text-color').value || "#000000";
                 appConfig.popupBtnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
                 appConfig.popupBtnTextColor = document.getElementById('cfg-popup-btn-text-color').value || "#ffffff";
 
                 localStorage.setItem('memory65_config', JSON.stringify(appConfig));
-                alert('บันทึกการตั้งค่าสำเร็จ! ระบบจะทำการรีโหลดหน้าเว็บ');
-                window.location.href = window.location.pathname; // โหลดหน้าใหม่โดยเอา ?A ออก
+                alert('บันทึกการตั้งค่าสำเร็จ! หน้าเว็บจะทำการโหลดใหม่');
+                window.location.href = window.location.pathname;
             };
 
             // ปิดโหมดแอดมิน
@@ -820,7 +922,6 @@
                 window.location.href = window.location.pathname; 
             };
         } else {
-            // โหมดผู้ใช้งานปกติ
             init();
         }
 
