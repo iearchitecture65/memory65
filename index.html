@@ -248,7 +248,6 @@
         }
 
         #video-container.active { display: block !important; }
-        #video-container iframe { width: 100%; height: 100%; border: 0; }
 
         /* Centered Status Message */
         .status-msg {
@@ -319,6 +318,7 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
+            transition: opacity 0.3s;
         }
 
         .admin-preview-header {
@@ -464,6 +464,7 @@
             display: inline-block; padding: 14px 35px; border-radius: 100px; 
             text-decoration: none; font-weight: 500; font-size: 1rem; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: transform 0.2s;
+            cursor: pointer;
         }
         .popup-box a.popup-btn:active, .preview-popup-box a.popup-btn:active { transform: scale(0.95); }
         .popup-close-x, .preview-close-x {
@@ -518,7 +519,7 @@
     </div>
 
     <div id="video-container">
-        <!-- กลับมาใช้ iframe ของ Google Drive ป้องกันปัญหาวิดีโอพังบนมือถือและลดการโหลดซ้ำ -->
+        <!-- เราต้องใช้ Iframe เท่านั้นเพื่อให้เล่นไฟล์จาก Google Drive บนมือถือ (iOS) ได้โดยไม่เกิดจอสีดำ -->
         <div id="iframe-target" style="width: 100%; height: 100%;"></div>
     </div>
 
@@ -534,79 +535,86 @@
                 <div class="admin-group">
                     <label>Google Drive Video ID</label>
                     <input type="text" id="cfg-drive-id" placeholder="1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao">
+                    <span class="helper-text" style="color:#d32f2f; margin-top:8px; display:block; line-height: 1.4;">
+                        *ระบบใช้ Google Drive Iframe เพื่อให้เปิดได้ทุกอุปกรณ์ (รวมถึง iPhone) ซึ่งจะไม่สามารถให้เว็บเช็คสถานะคลิปว่าเล่นจบแล้วได้ <b>จึงต้องตั้งเวลาคลิปเอาเองครับ</b>
+                    </span>
                 </div>
-                <!-- นำช่องความยาวคลิปกลับมา เพื่อใช้ในการคำนวณเวลาร่วมกับการจับการสัมผัสจอ -->
+                
                 <div class="admin-group-row">
                     <div class="admin-group">
-                        <label>ความยาวคลิป (วินาที)</label>
-                        <input type="number" id="cfg-video-duration" placeholder="เช่น 60">
-                        <span class="helper-text">*ต้องใส่เพื่อให้ระบบรู้เวลาของคลิป</span>
+                        <label>ความยาวคลิปจริงๆ (วินาที)</label>
+                        <input type="number" id="cfg-video-duration" placeholder="เช่น 11">
                     </div>
                     <div class="admin-group">
                         <label>เด้งก่อนจบ (วินาที)</label>
                         <input type="number" id="cfg-popup-before" placeholder="เช่น 3">
-                        <span class="helper-text">*เช่น 3 (เด้งก่อนจบ 3 วิ)</span>
                     </div>
                 </div>
 
-                <div class="admin-section-title">💬 เนื้อหาป๊อปอัพหลังดูจบ</div>
-                <div class="admin-group">
-                    <label>ลิงก์รูปภาพ (ออพชั่นเสริม)</label>
-                    <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg (เว้นว่างได้)">
-                </div>
-                <div class="admin-group">
-                    <label>ข้อความอธิบาย</label>
-                    <textarea id="cfg-popup-text" rows="3" placeholder="พิมพ์ข้อความที่จะแสดงเมื่อดูวิดีโอจบ..."></textarea>
-                </div>
-                <div class="admin-group">
-                    <label>รูปแบบตัวอักษร (Font)</label>
-                    <select id="cfg-popup-font">
-                        <option value="Kanit">Kanit (แนะนำ)</option>
-                        <option value="Prompt">Prompt</option>
-                        <option value="Sarabun">Sarabun</option>
-                        <option value="Tahoma">Tahoma</option>
-                        <option value="Arial">Arial</option>
-                        <option value="sans-serif">System Default (ตามระบบ)</option>
-                    </select>
-                </div>
-                <div class="admin-group-row">
-                    <div class="admin-group">
-                        <label>ข้อความบนปุ่ม</label>
-                        <input type="text" id="cfg-popup-btn-text" placeholder="ดูรูปเพิ่มเติม">
-                    </div>
-                    <div class="admin-group">
-                        <label>ลิงก์เมื่อกดปุ่ม</label>
-                        <input type="text" id="cfg-popup-btn-link" placeholder="https://google.com">
-                    </div>
+                <div class="admin-section-title" style="margin-top: 35px;">💬 การแสดงป๊อปอัพ</div>
+                
+                <!-- Toggle เปิดปิด ป๊อปอัพ -->
+                <div class="admin-group" style="background: #fff3e0; padding: 15px; border-radius: 10px; border: 1px solid #ffcc80;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="cfg-popup-enabled" style="width: 24px; height: 24px; cursor: pointer; accent-color: #f57c00;">
+                        <span style="font-size: 1.1rem; font-weight: 600; color: #e65100;">เปิดใช้งานระบบป๊อปอัพ</span>
+                    </label>
                 </div>
 
-                <div class="admin-section-title">🎨 ตั้งค่าสีสัน (กดเลือกสีได้เลย)</div>
-                <div class="admin-group color-picker-group">
-                    <input type="color" id="cfg-popup-bg-color" value="#ffffff">
-                    <div class="color-hex">
-                        <label>สีพื้นหลังป๊อปอัพ</label>
-                        <input type="text" id="cfg-popup-bg" placeholder="#ffffff">
+                <!-- กล่องตั้งค่าป๊อปอัพ (จะจางลงถ้ากดปิด) -->
+                <div id="popup-settings-container" style="transition: opacity 0.3s; margin-top: 25px;">
+                    <div class="admin-group">
+                        <label>ลิงก์รูปภาพ (ออพชั่นเสริม)</label>
+                        <input type="text" id="cfg-popup-img" placeholder="https://example.com/image.jpg (เว้นว่างได้)">
                     </div>
-                </div>
-                <div class="admin-group color-picker-group">
-                    <input type="color" id="cfg-popup-text-color-picker" value="#000000">
-                    <div class="color-hex">
-                        <label>สีตัวอักษรข้อความ</label>
-                        <input type="text" id="cfg-popup-text-color" placeholder="#000000">
+                    <div class="admin-group">
+                        <label>ข้อความอธิบาย</label>
+                        <textarea id="cfg-popup-text" rows="3" placeholder="พิมพ์ข้อความที่จะแสดงเมื่อดูวิดีโอจบ..."></textarea>
                     </div>
-                </div>
-                <div class="admin-group color-picker-group">
-                    <input type="color" id="cfg-popup-btn-bg-picker" value="#000000">
-                    <div class="color-hex">
-                        <label>สีพื้นหลังปุ่ม</label>
-                        <input type="text" id="cfg-popup-btn-bg" placeholder="#000000">
+                    <div class="admin-group">
+                        <label>รูปแบบตัวอักษร (Font)</label>
+                        <select id="cfg-popup-font">
+                            <option value="Kanit">Kanit (แนะนำ)</option>
+                            <option value="Prompt">Prompt</option>
+                            <option value="Sarabun">Sarabun</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Arial">Arial</option>
+                            <option value="sans-serif">System Default (ตามระบบ)</option>
+                        </select>
                     </div>
-                </div>
-                <div class="admin-group color-picker-group">
-                    <input type="color" id="cfg-popup-btn-text-color-picker" value="#ffffff">
-                    <div class="color-hex">
-                        <label>สีตัวอักษรบนปุ่ม</label>
-                        <input type="text" id="cfg-popup-btn-text-color" placeholder="#ffffff">
+                    <div class="admin-group">
+                        <label>ข้อความบนปุ่ม (ปุ่มนี้เอาไว้กดเพื่อ "ปิด" ป๊อปอัพกลับไปดูวิดีโอ)</label>
+                        <input type="text" id="cfg-popup-btn-text" placeholder="ปิดหน้าต่าง">
+                    </div>
+
+                    <div class="admin-section-title">🎨 ตั้งค่าสีสัน (กดเลือกสีได้เลย)</div>
+                    <div class="admin-group color-picker-group">
+                        <input type="color" id="cfg-popup-bg-color" value="#ffffff">
+                        <div class="color-hex">
+                            <label>สีพื้นหลังป๊อปอัพ</label>
+                            <input type="text" id="cfg-popup-bg" placeholder="#ffffff">
+                        </div>
+                    </div>
+                    <div class="admin-group color-picker-group">
+                        <input type="color" id="cfg-popup-text-color-picker" value="#000000">
+                        <div class="color-hex">
+                            <label>สีตัวอักษรข้อความ</label>
+                            <input type="text" id="cfg-popup-text-color" placeholder="#000000">
+                        </div>
+                    </div>
+                    <div class="admin-group color-picker-group">
+                        <input type="color" id="cfg-popup-btn-bg-picker" value="#000000">
+                        <div class="color-hex">
+                            <label>สีพื้นหลังปุ่ม</label>
+                            <input type="text" id="cfg-popup-btn-bg" placeholder="#000000">
+                        </div>
+                    </div>
+                    <div class="admin-group color-picker-group">
+                        <input type="color" id="cfg-popup-btn-text-color-picker" value="#ffffff">
+                        <div class="color-hex">
+                            <label>สีตัวอักษรบนปุ่ม</label>
+                            <input type="text" id="cfg-popup-btn-text-color" placeholder="#ffffff">
+                        </div>
                     </div>
                 </div>
 
@@ -625,7 +633,7 @@
                         <div class="preview-close-x">✕</div>
                         <img id="preview-popup-img" src="" alt="Popup Image">
                         <p id="preview-popup-text"></p>
-                        <a id="preview-popup-btn" href="#" target="_blank" class="popup-btn"></a>
+                        <a id="preview-popup-btn" href="#" class="popup-btn"></a>
                     </div>
                 </div>
             </div>
@@ -640,7 +648,7 @@
             <div class="popup-close-x" id="popup-close-btn">✕</div>
             <img id="popup-display-img" src="" alt="Popup Image">
             <p id="popup-display-text"></p>
-            <a id="popup-display-btn" href="#" target="_blank" class="popup-btn"></a>
+            <a id="popup-display-btn" href="#" class="popup-btn"></a>
         </div>
     </div>
 
@@ -673,12 +681,12 @@
         const DEFAULT_DRIVE_ID = "1PDHN_rOsVzXpW00smq1W1dC4ub3QFaao";
         let appConfig = {
             driveId: DEFAULT_DRIVE_ID,
-            videoDuration: 60, // ดึงค่านี้กลับมาใช้
-            popupBefore: 3,
+            videoDuration: 11, 
+            popupBefore: 3, 
+            popupEnabled: true, // ค่าการเปิดปิดป๊อปอัพเริ่มต้น
             popupImg: "",
             popupText: "ขอบคุณที่รับชมความทรงจำของเรา 🎉",
-            popupBtnText: "กลับไปหน้าแรก",
-            popupBtnLink: "#",
+            popupBtnText: "ปิดหน้าต่าง",
             popupFont: "Kanit",
             popupBg: "#ffffff",
             popupTextColor: "#000000",
@@ -900,13 +908,14 @@
         }
 
         // ==========================================
-        // 4. การจัดการวิดีโอ (Iframe) และระบบจับเวลาแบบเจาะจง
+        // 4. การแสดง Iframe ของ Google Drive และจับเวลาเมื่อนิ้วแตะ
         // ==========================================
         let videoTimerStarted = false;
 
-        // ฟังก์ชันสำหรับเริ่มจับเวลา (จะถูกเรียกเมื่อผู้ใช้แตะโดน iframe หรือจอ)
-        function startVideoTimerCounting() {
-            if (videoTimerStarted) return; // ทำงานแค่ครั้งเดียว
+        function startVideoTimer() {
+            if (videoTimerStarted) return; 
+            if (appConfig.popupEnabled === false) return; // ถ้าแอดมินปิดป๊อปอัพไว้ ไม่ต้องจับเวลา
+
             videoTimerStarted = true;
             
             const totalDuration = parseInt(appConfig.videoDuration) || 0;
@@ -917,7 +926,6 @@
                 if (delaySeconds < 0) delaySeconds = 0;
                 
                 setTimeout(() => {
-                    // ถ้าวิดีโอยังเปิดอยู่ ให้เด้งป๊อปอัพขึ้นมา
                     if (videoContainer.classList.contains('active')) {
                         openPopupOverlay();
                     }
@@ -948,30 +956,25 @@
                 // ใช้ Iframe ตามเดิมเพื่อความเสถียรบนมือถือ
                 iframeTarget.innerHTML = `<iframe src="https://drive.google.com/file/d/${currentDriveId}/preview" allow="autoplay; fullscreen" allowfullscreen style="width: 100%; height: 100%; border: none;"></iframe>`;
 
-                // ระบบดักจับการคลิก (เมื่อผู้ใช้แตะปุ่ม Play ของ Google Drive ใน Iframe)
-                // ทันทีที่ผู้ใช้แตะ Iframe หน้าต่างเว็บหลักจะเสียโฟกัส (blur) เราจึงรู้ได้ทันทีว่าเขากด Play แล้ว!
+                // ระบบดักจับเมื่อผู้ใช้กด Play
                 window.focus();
                 window.addEventListener('blur', () => {
                     setTimeout(() => {
                         const activeEl = document.activeElement;
-                        // ถ้าสิ่งที่ผู้ใช้เพิ่งแตะไปคือ Iframe ของเรา -> เริ่มนับเวลาถอยหลัง!
                         if (activeEl && activeEl.tagName === 'IFRAME') {
-                            startVideoTimerCounting();
+                            startVideoTimer();
                         }
                     }, 100);
                 });
 
-                // สำรองสำหรับมือถือบางรุ่น: ทันทีที่นิ้วแตะโดนหน้าจอส่วนใดก็ตามในหน้านี้ (เผื่อระบบ blur ด้านบนไม่ทำงาน)
-                videoContainer.addEventListener('touchstart', startVideoTimerCounting, { once: true });
+                // สำรองสำหรับมือถือบางรุ่น เมื่อแตะที่จอ
+                videoContainer.addEventListener('touchstart', startVideoTimer, { once: true });
                 
             }, 400);
         }
 
         function openPopupOverlay() {
-            const iframeTarget = document.getElementById('iframe-target');
-            if (iframeTarget) iframeTarget.innerHTML = ''; // ปิดวิดีโอ
-            
-            videoContainer.classList.remove('active');
+            // เราจะไม่เคลียร์ iframe ทิ้งแล้ว เพื่อให้วิดีโอยังอยู่เป็นพื้นหลัง
 
             const pBox = document.getElementById('popup-box');
             const pImg = document.getElementById('popup-display-img');
@@ -991,19 +994,21 @@
             }
 
             pBtn.innerText = appConfig.popupBtnText;
-            pBtn.href = appConfig.popupBtnLink;
             pBtn.style.backgroundColor = appConfig.popupBtnBg;
             pBtn.style.color = appConfig.popupBtnTextColor;
             
-            if(appConfig.popupBtnLink === "#") {
-                pBtn.onclick = (e) => { e.preventDefault(); location.reload(); };
-            }
+            // เมื่อกดปุ่มในป๊อปอัพ จะเป็นแค่การปิดหน้าต่าง
+            pBtn.onclick = (e) => { 
+                e.preventDefault(); 
+                document.getElementById('popup-container').style.display = 'none'; 
+            };
 
             document.getElementById('popup-container').style.display = 'flex';
         }
 
+        // เมื่อกดกากบาท ให้ปิดป๊อปอัพ กลับไปวิดีโอเดิม
         document.getElementById('popup-close-btn').onclick = () => {
-            location.reload(); 
+            document.getElementById('popup-container').style.display = 'none';
         };
 
         // ==========================================
@@ -1011,18 +1016,33 @@
         // ==========================================
         function populateAdminForm() {
             document.getElementById('cfg-drive-id').value = appConfig.driveId;
-            document.getElementById('cfg-video-duration').value = appConfig.videoDuration !== undefined ? appConfig.videoDuration : 60;
+            document.getElementById('cfg-video-duration').value = appConfig.videoDuration !== undefined ? appConfig.videoDuration : 11;
             document.getElementById('cfg-popup-before').value = appConfig.popupBefore !== undefined ? appConfig.popupBefore : 3;
+            
+            // ระบบสวิตช์เปิดปิด
+            const isPopupEnabled = appConfig.popupEnabled !== false;
+            document.getElementById('cfg-popup-enabled').checked = isPopupEnabled;
+            updatePopupSettingsVisibility(isPopupEnabled);
+
             document.getElementById('cfg-popup-img').value = appConfig.popupImg;
             document.getElementById('cfg-popup-text').value = appConfig.popupText;
             document.getElementById('cfg-popup-font').value = appConfig.popupFont;
             document.getElementById('cfg-popup-btn-text').value = appConfig.popupBtnText;
-            document.getElementById('cfg-popup-btn-link').value = appConfig.popupBtnLink;
 
             setAdminColorValue(appConfig.popupBg, 'cfg-popup-bg', 'cfg-popup-bg-color');
             setAdminColorValue(appConfig.popupTextColor, 'cfg-popup-text-color', 'cfg-popup-text-color-picker');
             setAdminColorValue(appConfig.popupBtnBg, 'cfg-popup-btn-bg', 'cfg-popup-btn-bg-picker');
             setAdminColorValue(appConfig.popupBtnTextColor, 'cfg-popup-btn-text-color', 'cfg-popup-btn-text-color-picker');
+        }
+
+        function updatePopupSettingsVisibility(isEnabled) {
+            const container = document.getElementById('popup-settings-container');
+            const previewSection = document.querySelector('.admin-preview-section');
+            container.style.opacity = isEnabled ? '1' : '0.4';
+            container.style.pointerEvents = isEnabled ? 'auto' : 'none';
+            if(previewSection) {
+                previewSection.style.opacity = isEnabled ? '1' : '0.3';
+            }
         }
 
         function updateAdminLivePreview() {
@@ -1035,7 +1055,6 @@
             const imgUrl = document.getElementById('cfg-popup-img').value.trim();
             const font = document.getElementById('cfg-popup-font').value || "Kanit";
             const btnText = document.getElementById('cfg-popup-btn-text').value || "ตกลง";
-            const btnLink = document.getElementById('cfg-popup-btn-link').value || "#";
             const bgColor = document.getElementById('cfg-popup-bg').value || "#ffffff";
             const textColor = document.getElementById('cfg-popup-text-color').value || "#000000";
             const btnBg = document.getElementById('cfg-popup-btn-bg').value || "#000000";
@@ -1054,7 +1073,8 @@
             }
 
             pBtn.innerText = btnText;
-            pBtn.href = btnLink;
+            pBtn.href = "#"; // ไม่มีลิงก์ออก
+            pBtn.onclick = (e) => e.preventDefault();
             pBtn.style.backgroundColor = btnBg;
             pBtn.style.color = btnTextColor;
         }
@@ -1090,6 +1110,10 @@
             syncColors('cfg-popup-btn-bg-picker', 'cfg-popup-btn-bg');
             syncColors('cfg-popup-btn-text-color-picker', 'cfg-popup-btn-text-color');
 
+            document.getElementById('cfg-popup-enabled').addEventListener('change', (e) => {
+                updatePopupSettingsVisibility(e.target.checked);
+            });
+
             const adminInputs = document.querySelectorAll('#admin-panel input, #admin-panel textarea, #admin-panel select');
             adminInputs.forEach(input => {
                 input.addEventListener('input', updateAdminLivePreview);
@@ -1105,11 +1129,11 @@
                     driveId: document.getElementById('cfg-drive-id').value.trim() || DEFAULT_DRIVE_ID,
                     videoDuration: parseInt(document.getElementById('cfg-video-duration').value) || 0,
                     popupBefore: parseInt(document.getElementById('cfg-popup-before').value) || 0,
+                    popupEnabled: document.getElementById('cfg-popup-enabled').checked,
                     popupImg: document.getElementById('cfg-popup-img').value.trim(),
                     popupText: document.getElementById('cfg-popup-text').value,
                     popupFont: document.getElementById('cfg-popup-font').value || "Kanit",
                     popupBtnText: document.getElementById('cfg-popup-btn-text').value || "ตกลง",
-                    popupBtnLink: document.getElementById('cfg-popup-btn-link').value || "#",
                     popupBg: document.getElementById('cfg-popup-bg').value || "#ffffff",
                     popupTextColor: document.getElementById('cfg-popup-text-color').value || "#000000",
                     popupBtnBg: document.getElementById('cfg-popup-btn-bg').value || "#000000",
