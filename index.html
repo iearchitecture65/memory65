@@ -10,8 +10,10 @@
     <link rel="icon" href="memory-picture.JPG" type="image/x-icon">
     
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600&family=Prompt:wght@300;400;500&family=Sarabun:wght@300;400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    
+    <!-- แก้ไข: เพิ่ม defer เพื่อให้หน้าเว็บแสดงผลขึ้นมาก่อน ไม่ค้างจอดำตอนเริ่มโหลด -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet" defer></script>
     
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -106,9 +108,9 @@
 
         @keyframes dotCycle {
             0% { content: ''; }
-            25% { content: '.'; }
-            50% { content: '..'; }
-            75% { content: '...'; }
+            25% { content: '..'; }
+            50% { content: '...'; }
+            75% { content: '....'; }
         }
 
         @keyframes complexTransition {
@@ -766,10 +768,21 @@
 
         async function initAI() {
             try {
+                // แก้ไข: เพิ่ม Yielding ปล่อยให้เบราว์เซอร์หายใจ ไม่ค้าง (ช่วยป้องกัน Thread Block)
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                // แก้ไข: ตรวจสอบให้แน่ใจว่าโหลดแกนหลักของ TensorFlow พร้อมแล้วก่อน
+                if(window.tf) await tf.ready();
+
                 const imagesToLoad = [targetImg, document.querySelector('.grayscale-overlay')];
                 await Promise.all(imagesToLoad.map(img => {
                     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-                    return new Promise(r => { img.onload = r; img.onerror = r; });
+                    return new Promise(r => { 
+                        img.onload = r; 
+                        img.onerror = r; 
+                        // แก้ไข: เพิ่ม timeout กรณีโหลดรูปไม่สำเร็จแล้วค้างไปเลย
+                        setTimeout(r, 4000);
+                    });
                 }));
 
                 if (targetImg.naturalWidth === 0) throw new Error("Invalid image");
@@ -777,8 +790,22 @@
                 targetImg.classList.add('loaded');
                 imgLoader.style.display = 'none';
 
+                // แก้ไข: อัปเดตข้อความให้ผู้ใช้รู้ว่าระบบกำลังทำงานอยู่ และเว้นจังหวะให้เบราว์เซอร์เรนเดอร์ข้อความ
+                if(btnText) btnText.innerText = "กำลังเตรียม AI...";
+                await new Promise(resolve => setTimeout(resolve, 50));
+
                 model = await mobilenet.load({ version: 2, alpha: 1.0 });
                 
+                // แก้ไข: กระบวนการ "Warm-up" AI
+                // การเรียกใช้ infer ครั้งแรกจะบังคับให้มันคอมไพล์ WebGL Shaders ให้เสร็จตรงนี้ 
+                // ทำให้ตอนไปกดปุ่มสแกนจริงๆ จะไม่กระตุกหรือค้าง
+                if(btnText) btnText.innerText = "กำลังประมวลผล...";
+                await new Promise(resolve => setTimeout(resolve, 50));
+                tf.tidy(() => {
+                    model.infer(tf.zeros([1, 224, 224, 3])).dispose(); 
+                });
+                await new Promise(resolve => setTimeout(resolve, 50));
+
                 const results = tf.tidy(() => {
                     const img = tf.browser.fromPixels(targetImg);
                     const [h, w] = img.shape;
@@ -799,7 +826,7 @@
                 checkReadyStatus();
             } catch (e) { 
                 console.error(e);
-                btnText.innerText = "เกิดข้อผิดพลาดในการโหลด AI"; 
+                if(btnText) btnText.innerText = "เกิดข้อผิดพลาดในการโหลด AI"; 
             }
         }
 
